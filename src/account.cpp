@@ -1,15 +1,23 @@
 #include "account.h"
-#include <iostream>
 #include <cmath>
-using namespace std;
-double Account::total=0;
-Account::Account(const Date &date,const std::string &id):id(id),balance(0){};
+#include <iostream>
+#include <string>
 
-void Account::record(const Date &date,double amount,const std::string &desc){
-    amount=floor(amount*100+0.5)/100;
-    balance+=amount;
-    total+=amount;
-    date.showDate();
-    cout<<" "<<desc<<" "<<amount<<" Balance: "<<balance<<endl;
+Account::Account(const int &id,char type,const std::string &name,int balance,const Date &openDate):
+    id(id),type(type),name(name),opendate(openDate),balance(balance){};
+
+SavingAccount::SavingAccount(const int &id,char type,const std::string &name,int balance,const Date &openDate):
+    Account(id,type,name,balance,openDate){};
+
+void SavingAccount::deposit(const Date &date,int amount){
+        balance+=amount;
 }
 
+void SavingAccount::withdraw(const Date &date,int amount){
+        balance-=amount;
+}
+
+void SavingAccount::settle(const Date &date){
+    
+    interest+=balance*dailyRate;
+}

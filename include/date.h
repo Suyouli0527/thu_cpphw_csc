@@ -15,7 +15,7 @@ class Date{
         void showDate()const;
         bool addDays(int n);
         bool setDays(int y,int m,int d);
-        int distance(const Date &date) const{
+        int operator-(const Date &date) const{
             return totalDays-date.totalDays;
         }
         void cast();

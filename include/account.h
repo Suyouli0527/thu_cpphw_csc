@@ -1,59 +1,39 @@
 #pragma once
 #include "date.h"
-#include "accumulator.h"
-#include<string>
+#include <string>
+
 class Account{
-    private:
-        std::string id;
-        double balance;
-        static double total;
     protected:
-        Account(const Date &date,const std::string &id);
-        void record(const Date &date,double amount,const std::string &desc);
-        void record(const Date &date,double amount,const std::string &desc);
-        void error(const std::string &msg) const ;
+        int id;
+        std::string name;
+        std::string owner;
+        char type;
+        double balance;
+        Date lastDate;
+        double interest;
+        double dailyRate;
     public:
-        const std::string getId() const { return id; }
-        double getBalance() const { return balance; }
-        static double getTotal() { return total;}
+        Account(const int &id,char type,const std::string &name,int balance,const Date &lastDate);
+        virtual void deposit(const Date &date,int amount)=0;
+        virtual void withdraw(const Date &date,int amount)=0;
+        virtual void settle(const Date &date)=0;
+        virtual void settleMonthlyInterest()=0;
+        virtual void transfer(Account &target,double amount)=0;
+        virtual void getdailyRate()=0;
+        int getId() const{return id;};
+        char getType()const{return type;} ;
+        std::string getName() const {return name;};
+        double getBalance() const{return balance;};
+        Date getOpenDate() const{return lastDate;};
+        bool modifyName(const std::string& newName);        
 };
 
 class SavingAccount:public Account{
     private:
-        Accumulator acc;
-        double rate;
+        static const double savingRate=0.0115;
     public:
-        SavingAccount(const Date &date,const std::string &id,double rate);
-        double getRate()const {return rate;}
-        void deposit(const Date &date,double amount,const std::string &desc);
-        void withdraw(const Date &date,double amount,const std::string &desc);
+        SavingAccount(const int &id,char type,const std::string &name,int balance,const Date &openDate);
+        void deposit(const Date &date,int amount);
+        void withdraw(const Date &date,int amount);
         void settle(const Date &date);
-};
-
-class CreditAccount:public Account{
-    private:
-        Accumulator acc;
-        double credit;
-        double rate;
-        double fee;
-        double getDebt() const{
-            double balance=getBalance();
-            return (balance<0?balance:0);
-        }
-    public:
-        CreditAccount(const Date &date,const std::string &id,double credit,double rate,double fee);
-        double getCredit() const { return credit; }
-        double getRate() const { return rate; }
-        double getFee() const { return fee; }
-        double getAvailableCredit() const { 
-            if(getBalance()<0)
-                return credit+getBalance();
-            else
-                return credit;
-        } ;
-        void deposit(const Date &date,double amount,const std::string &desc);
-        void withdraw(const Date &date,double amount,const std::string &desc);
-        void settle(const Date &date);
-        void showe() const;
-
 };
