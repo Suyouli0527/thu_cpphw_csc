@@ -9,12 +9,12 @@ class Date{
         int getDay()const {return day;};
         std::string getweekDay() const {return weekday;};
         int getMaxDay()const;
-        bool isleapyear()const{
-            return year%4==0&&year%100!=0||year%400==0;
-        }
+        static bool isleapYear(int y);
+        static int daysInMonth(int y, int m);
+        static bool isLegalDate(int y,int m,int d);
         void showDate()const;
-        void addDays(int n);
-        void setDays(int y,int m,int d);
+        bool addDays(int n);
+        bool setDays(int y,int m,int d);
         int distance(const Date &date) const{
             return totalDays-date.totalDays;
         }
