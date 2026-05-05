@@ -17,7 +17,8 @@ void SavingAccount::withdraw(const Date &date,int amount){
         balance-=amount;
 }
 
-void SavingAccount::settle(const Date &date){
-    
-    interest+=balance*dailyRate;
+void  SavingAccount::transfer(Account& target,double amount){
+    balance-=amount;
+    target.balance+=amount;
 }
+

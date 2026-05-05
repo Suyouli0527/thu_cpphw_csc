@@ -29,6 +29,9 @@ bool Date::isLegalDate(int y,int m,int d){
     return true;
 }
 
+int Date::daysInYear()const {
+    return isleapYear(year)?366:365;
+}
     // 构造函数
 Date::Date(int y, int m, int d) {
     if(!isLegalDate(y,m,d)) throw std::invalid_argument("Invalid date");
@@ -89,3 +92,4 @@ void Date::cast(){
 void Date::showDate()const {
     cout<<getweekDay()<<", "<<getMonth()<<" "<<getDay()<<", "<<getYear()<<endl;
 };
+

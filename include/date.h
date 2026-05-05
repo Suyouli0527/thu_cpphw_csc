@@ -11,6 +11,7 @@ class Date{
         int getMaxDay()const;
         static bool isleapYear(int y);
         static int daysInMonth(int y, int m);
+        int daysInYear() const;
         static bool isLegalDate(int y,int m,int d);
         void showDate()const;
         bool addDays(int n);
