@@ -1,5 +1,6 @@
 #pragma once
 #include "date.h"
+#include "interestCalculator.h"
 #include <string>
 
 class Account{
@@ -13,13 +14,12 @@ class Account{
         double interest;
     public:
         Account(const int &id,char type,const std::string &name,double balance,const Date &openDate);
-        virtual void deposit(const Date &date,int amount)=0;
-        virtual void withdraw(const Date &date,int amount)=0;
-        virtual void transfer(Account &target,double amount)=0;
+        virtual void deposit(const Date &date,double amount)=0;
+        virtual void withdraw(const Date &date,double amount)=0;
+        virtual void transfer(const Date &date,Account &target,double amount)=0;
         virtual void calcDailyInterest(const Date &date)=0;
         virtual void settleMonthlyInterest()=0;
         
-        virtual void getdailyRate()=0;
         int getId() const{return id;};
         char getType()const{return type;} ;
         std::string getName() const {return name;};
@@ -31,31 +31,28 @@ class Account{
 };
 
 class SavingAccount:public Account{
-    private:
-        static const double savingRate=0.0115;
     public:
         SavingAccount(const int &id,char type,const std::string &name,int balance,const Date &openDate);
-        void deposit(const Date &date,int amount);
-        void withdraw(const Date &date,int amount);
+        void deposit(const Date &date,double amount);
+        void withdraw(const Date &date,double amount); 
+        void transfer(const Date &date,Account &target,double amount);
         void settle(const Date &date);
         void calcDailyInterest(const Date &date);
         void settleMonthlyInterest();
-        void transfer(Account &target,double amount);
-        void getdailyRate();
+        void display();
 };
 
 class CreditAccount:public Account{
     private:
-        static const double creditRate=0.0225;
-        static const double debtRate=0.0005;
         double credit;
     public:
-         CreditAccount(const int &id,char type,const std::string &name,int credit,const Date &openDate);
-        void deposit(const Date &date,int amount);
-        void withdraw(const Date &date,int amount);
-        void settle(const Date &date);
+        CreditAccount(const int &id,char type,const std::string &name,double balance,const Date &openDate,double credit);
+        double getCredit()const{return credit;};
+        void deposit(const Date &date,double amount);
+        void withdraw(const Date &date,double amount);
+        void transfer(const Date &date,Account &target,double amount);
+        bool modifyCredit(double newCredit);
         void calcDailyInterest(const Date &date);
         void settleMonthlyInterest();
-        void transfer(Account &target,double amount);
-        void getdailyRate();
+        
 };
