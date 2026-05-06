@@ -13,12 +13,13 @@ class Account{
         Date lastInterestDate;
         double interest;
     public:
-        Account(const int &id,char type,const std::string &name,double balance,const Date &openDate);
+        Account(int id,char type,const std::string &name,double balance,const Date &openDate);
+        void updateInterest(const Date &targetDate);
+        void settleMonthlyInterest();
+        
         virtual void deposit(const Date &date,double amount)=0;
         virtual void withdraw(const Date &date,double amount)=0;
         virtual void transfer(const Date &date,Account &target,double amount)=0;
-        virtual void calcDailyInterest(const Date &date)=0;
-        virtual void settleMonthlyInterest()=0;
         
         int getId() const{return id;};
         char getType()const{return type;} ;
@@ -32,13 +33,11 @@ class Account{
 
 class SavingAccount:public Account{
     public:
-        SavingAccount(const int &id,char type,const std::string &name,int balance,const Date &openDate);
+        SavingAccount(int id,char type,const std::string &name,int balance,const Date &openDate);
         void deposit(const Date &date,double amount);
         void withdraw(const Date &date,double amount); 
         void transfer(const Date &date,Account &target,double amount);
         void settle(const Date &date);
-        void calcDailyInterest(const Date &date);
-        void settleMonthlyInterest();
         void display();
 };
 
@@ -46,13 +45,12 @@ class CreditAccount:public Account{
     private:
         double credit;
     public:
-        CreditAccount(const int &id,char type,const std::string &name,double balance,const Date &openDate,double credit);
+        CreditAccount(int id,char type,const std::string &name,double credit,const Date &openDate);
         double getCredit()const{return credit;};
         void deposit(const Date &date,double amount);
         void withdraw(const Date &date,double amount);
         void transfer(const Date &date,Account &target,double amount);
         bool modifyCredit(double newCredit);
-        void calcDailyInterest(const Date &date);
         void settleMonthlyInterest();
         
 };

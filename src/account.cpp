@@ -2,25 +2,37 @@
 #include <iostream>
 #include <string>
 
-Account::Account(const int &id,char type,const std::string &name,double balance,const Date &openDate):id(id),type(type),name(name),balance(balance),openDate(openDate){};
+Account::Account(int id,char type,const std::string &name,double balance,const Date &openDate):id(id),type(type),name(name),balance(balance),openDate(openDate){};
 
 bool Account::modifyName(const std::string &newName){
         name=newName;
         return true;
 }
 
-void Account::calcDailyInterest(const Date &targetDate){
-    InterestCalculator::calcTotalInterest(
-        type,
-        balance,
-        lastInterestDate,
-        targetDate,
-        interest
-    );
-    lastInterestDate = targetDate;}
+
+void Account::settleMonthlyInterest() {
+    balance += interest;
+    interest = 0.0;
+}void Account::updateInterest(const Date& targetDate) {
+    Date d = lastInterestDate;
+    d.addDays(1);                     
+    while (d - targetDate <= 0) {      
+        double daily = InterestCalculator::calcDailyInterest(type, balance, d);
+        interest += daily;
+
+        Date nextDay = d;
+        nextDay.addDays(1);
+        if (nextDay.getDay() == 1) {
+            settleMonthlyInterest();  
+        }
+
+        d = nextDay;
+    }
+    lastInterestDate = targetDate;
+}
 
 
-SavingAccount::SavingAccount(const int &id,char type,const std::string &name,int balance,const Date &openDate):
+SavingAccount::SavingAccount(int id,char type,const std::string &name,int balance,const Date &openDate):
     Account(id,'s',name,balance,openDate){};
 
 
@@ -37,11 +49,7 @@ void SavingAccount::transfer(const Date &date,Account &target,double amount){
     target.deposit(date,amount);
 }
 
-void SavingAccount::settleMonthlyInterest(){
-    balance+=interest;
-    interest=0;
-}
-CreditAccount::CreditAccount(const int &id,char type,const std::string &name,double balance,const Date &openDate,double credit):
+CreditAccount::CreditAccount(int id,char type,const std::string &name,double credit,const Date &openDatet):
     Account(id,'c',name,0,openDate),credit(credit){};
 
 void CreditAccount::deposit (const Date &date,double amount){
@@ -61,9 +69,6 @@ bool CreditAccount::modifyCredit(double newCredit){
     credit=newCredit;
 }
 
-void CreditAccount::calcDailyInterest(const Date &date){
-    interest+=InterestCalculator::calcCreditDailyInterest(balance,date);
-}
 void CreditAccount::settleMonthlyInterest(){
     balance+=interest;
     interest=0;

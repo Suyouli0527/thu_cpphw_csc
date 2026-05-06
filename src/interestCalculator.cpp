@@ -1,52 +1,28 @@
 #include "interestCalculator.h"
-
-double InterestCalculator::calcSavingDailyInterest(double balance,const Date &date){
-    double dailyRate =savingRate/date.daysInYear();
+const double InterestCalculator::savingRate = 0.0115;
+const double InterestCalculator::creditRate = 0.0225;
+const double InterestCalculator::debtRate = 0.0005;
+double  InterestCalculator::calcDailyInterest(char type,double balance,const Date &date){
+    double dailyRate;
+    switch(type){
+        case 's':
+            dailyRate = savingRate/date.daysInYear();
+            break;
+        case 'c':
+            if(balance>=0){
+                dailyRate = creditRate/date.daysInYear();
+            }
+            else{
+                dailyRate = debtRate;
+            }
+            break;
+        default:
+            return 0;
+    }
     return balance*dailyRate;
 }
 
 
-double InterestCalculator::calcCreditDailyInterest(double balance,const Date &date){
-    if(balance>=0){
-        double dailyRate=creditRate/date.daysInYear();
-        return balance*dailyRate;
-    }
-    else{
-        return balance*debtRate;
-    }
-}
 
-double InterestCalculator::calcTotalInterest(
-            char type,
-            double balance,
-            const Date &startDate,
-            const Date &endDate,
-            double &accuInterest
-        ){
-            double totalInterest =0;
-            Date currentDate = startDate;
-            while(currentDate-endDate<0){
-                double dailyInterest;
-                if(type=='s'){
-                    dailyInterest=calcSavingDailyInterest(balance,currentDate);
-                }
-                else{
-                    dailyInterest=calcCreditDailyInterest(balance,currentDate);
-                }
-                accuInterest+=dailyInterest;
-
-                Date nextDay= currentDate;
-                nextDay.addDays(1);
-                    if(ifSettleMonthly(currentDate,nextDay)){
-                        balance+=accuInterest;
-                        totalInterest+=accuInterest;
-                        accuInterest=0;
-                    }
-                currentDate.addDays(1);
-            }
-        }
-bool InterestCalculator::ifSettleMonthly(const Date &currentDate,const Date &nextDate){
-    return nextDate.getMonth()!=currentDate.getMonth();
-}
         
 
