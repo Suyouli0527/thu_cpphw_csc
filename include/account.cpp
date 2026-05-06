@@ -59,7 +59,7 @@ bool SavingAccount::withdraw(const Date &date,double amount){
       return true;
 }
 
-bool SavingAccount::transfer(const Date &date,Account &target,double amount){
+bool SavingAccount::transfer(const Date &date,Account &source,Account &target,double amount){
     if(amount <0||amount > balance) {
         Tools::printFailure();
         return false;
@@ -93,7 +93,7 @@ bool CreditAccount::withdraw(const Date &date,double amount){
     return true;
 }
 
-bool CreditAccount::transfer(const Date &date,Account &target,double amount){
+bool CreditAccount::transfer(const Date &date,Account &source,Account &target,double amount){
     if(amount <0||amount > balance + credit) {
         Tools::printFailure();
         return false;

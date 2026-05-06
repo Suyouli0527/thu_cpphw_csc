@@ -17,7 +17,7 @@ int main() {
     std::cout << "  Savings balance: " << sa.getBalance() 
               << ", interest: " << sa.getInterest() << "\n";
     std::cout << "  Credit balance: " << ca.getBalance() 
-              << ", interest: " << ca.getInterest() << "\n\n";
+              << ", interest: " << ca.getInterest() << "\n";
 
     // 推进日期到 2 月 2 日（跨越 1 月 31 天 + 2 月 1 天 = 32 天）
     Date future(2026, 2, 2);
