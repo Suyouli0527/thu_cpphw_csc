@@ -19,8 +19,6 @@ class Account{
         
         virtual bool deposit(const Date &date,double amount)=0;
         virtual bool withdraw(const Date &date,double amount)=0;
-        virtual bool transfer(const Date &date,Account &source,Account &target,double amount)=0;
-        
         int getId() const{return id;};
         char getType()const{return type;} ;
         std::string getName() const {return name;};
@@ -36,7 +34,6 @@ class SavingAccount:public Account{
         SavingAccount(int id,char type,const std::string &name,double balance,const Date &openDate);
         bool deposit(const Date &date,double amount);
         bool withdraw(const Date &date,double amount); 
-        bool transfer(const Date &date,Account &source,Account &target,double amount);
         void settle(const Date &date);
         void display();
 };
@@ -49,7 +46,6 @@ class CreditAccount:public Account{
         double getCredit()const{return credit;};
         bool deposit(const Date &date,double amount);
         bool withdraw(const Date &date,double amount);
-        bool transfer(const Date &date,Account &source,Account &target,double amount);
         bool modifyCredit(double newCredit);
         void settleMonthlyInterest();
         

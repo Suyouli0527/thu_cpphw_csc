@@ -24,4 +24,7 @@ class User {
         }
 
         bool isAdmin() const { return userType == UserType::admin; }
+        bool operator<(const User& other) const {
+        return userName < other.userName;
+        }
     };

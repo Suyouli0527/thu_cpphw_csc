@@ -60,7 +60,7 @@ CreditAccount::CreditAccount(int id,char type,const std::string &name,double cre
     Account(id,'c',name,0,openDate),credit(creditAmount){};
 
 bool CreditAccount::deposit(const Date &date,double amount){
-    if(amount <=0) {
+    if(amount <0) {
         return false;
     }
     balance += amount;

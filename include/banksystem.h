@@ -33,7 +33,7 @@ class BankSystem {
         void modifyName(int id,const std::string &username);
         void modifyCredit(int id,double newCredit);
         void query(int id) const;
-        void queryallAccounts()const;
+        void queryAllAccounts()const;
 
         void deposit(int id, double amount);
         void withdraw(int id, double amount);
