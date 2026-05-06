@@ -55,5 +55,3 @@ class BankSystem {
         bool isLoggedIn() const { return currentUser != nullptr; }
         bool isAdmin() const { return isLoggedIn() && currentUser->isAdmin(); }
 };
-
-//新建一个cmd类用于管理命令和函数的映射关系
