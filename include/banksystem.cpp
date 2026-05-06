@@ -1,9 +1,9 @@
 #include "banksystem.h"
 
 User* BankSystem::findUser(const std::string& name) const{
-    for (auto user : users) {
+    for (const auto &user : users) {
         if (user.getUserName() == name) {
-            return &user;
+            return const_cast<User*>(&user);
         }
     }
     return nullptr;
@@ -139,10 +139,10 @@ void BankSystem::query(int id) const{
         Tools::printFailure();
         return;
     }
-    std::cout<<"ID: "<<acc->getId()<<" "
+    std::cout<<acc->getId()<<" "
         <<acc->getType()<<" "
         <<acc->getName()<<" "
-        <<acc->getBalance()<<" "<<std::endl;
+        <<acc->getBalance();
     if(acc->getType()=='c') {
         const CreditAccount* creditAcc=static_cast<const CreditAccount*>(acc);
         std::cout<<" "<<creditAcc->getCredit();
@@ -150,8 +150,8 @@ void BankSystem::query(int id) const{
     std::cout<<std::endl;
     }
 
-void BankSystem::queryallAccounts() const{
-    if(accounts.empty()) {
+void BankSystem::queryAllAccounts() const{
+    if(currentUser->getAccountIDs().empty()) {
         Tools::printFailure();
         return;
     }
@@ -297,10 +297,6 @@ void BankSystem::queryUser(const std::string &username) const{
     }
     User* user=findUser(username);
     if(user==nullptr) {
-        Tools::printFailure();
-        return;
-    }
-    else if(user->getUserType()!=UserType::admin) {
         Tools::printFailure();
         return;
     }

@@ -15,77 +15,77 @@ public:
         std::string cmd;
         iss >> cmd;
 
-        if (cmd == "open") {
+        if (cmd == "OPEN") {
             int id;
             char type;
             std::string accountName;
             double balance;
             iss >> id >> type >> accountName >> balance;
             System.openAccount(id, type, accountName, balance);
-        } else if (cmd == "close") {
+        } else if (cmd == "CLOSE") {
             int id;
             iss >> id;
             System.closeAccount(id);
-        } else if (cmd == "modifyname") {
+        } else if (cmd == "MODIFYNAME") {
             int id;
             std::string username;
             iss >> id >> username;
             System.modifyName(id, username);
-        } else if (cmd == "modifycredit") {
+        } else if (cmd == "MODIFYCREDIT") {
             int id;
             double newCredit;
             iss >> id >> newCredit;
             System.modifyCredit(id, newCredit);
-        } else if (cmd == "query") {
+        } else if (cmd == "QUERY") {
             int id;
             iss >> id;
             System.query(id);
-        } else if (cmd == "queryallaccounts") {
-            System.queryallAccounts();
-        } else if (cmd == "deposit") {
+        } else if (cmd == "QUERYALL") {
+            System.queryAllAccounts();
+        } else if (cmd == "DEPOSIT") {
             int id;
             double amount;
             iss >> id >> amount;
             System.deposit(id, amount);
-        } else if (cmd == "withdraw") {
+        } else if (cmd == "WITHDRAW") {
             int id;
             double amount;
             iss >> id >> amount;
             System.withdraw(id, amount);
-        } else if (cmd == "transfer") {
+        } else if (cmd == "TRANSFER") {
             int srcId, dstId;
             double amount;
             iss >> srcId >> dstId >> amount;
             System.transfer(srcId, dstId, amount);
-        } else if (cmd == "showdate") {
+        } else if (cmd == "SHOWDATE") {
             System.showDate();
-        } else if (cmd == "adddays") {
+        } else if (cmd == "ADD_DAYS") {
             int days;
             iss >> days;
             System.addDays(days);
-        } else if (cmd == "setdate") {
+        } else if (cmd == "SETDATE") {
             int year, month, day;
             iss >> year >> month >> day;
             System.setDate(year, month, day);
-        } else if (cmd == "createuser") {
+        } else if (cmd == "CREATEUSER") {
             std::string username;
             iss >> username;
             System.createUser(username);
-        } else if (cmd == "deleteuser") {
+        } else if (cmd == "DELETEUSER") {
             std::string username;
             iss >> username;
             System.deleteUser(username);
-        } else if (cmd == "queryuser") {
+        } else if (cmd == "QUERYUSER") {
             std::string username;
             iss >> username;
             System.queryUser(username);
-        } else if (cmd == "queryalluser") {
+        } else if (cmd == "QUERYALLUSER") {
              System.queryAllUser();
-        } else if (cmd == "switchuser") {
+        } else if (cmd == "SWITCHUSER") {
             std::string username;
             iss >> username;
             System.switchUser(username);
-        } else if (cmd == "whoami") {
+        } else if (cmd == "WHOAMI") {
             System.whoami();
         } else {
             std::cout << "Unknown command: " << cmd << std::endl;
