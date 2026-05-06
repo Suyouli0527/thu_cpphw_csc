@@ -16,8 +16,12 @@ class User {
         User(const std::string &name, UserType type) : userName(name), userType(type) {}
         std::string getUserName() const { return userName; }
         std::vector<int> getAccountIDs() const { return accountIDs; }
+        int getAccountCount() const { return accountIDs.size(); }
+        UserType getUserType() const { return userType; }
         void addAccountID(const int &id) { accountIDs.push_back(id); }
         void removeAccountID(const int &id) {
             accountIDs.erase(std::remove(accountIDs.begin(), accountIDs.end(), id), accountIDs.end());
         }
+
+        bool isAdmin() const { return userType == UserType::admin; }
     };
