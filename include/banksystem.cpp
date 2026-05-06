@@ -264,11 +264,15 @@ void BankSystem::queryUser(const std::string &username) const{
         Tools::printFailure();
         return;
     }
+    else if(user->getUserType()!=UserType::admin) {
+        Tools::printFailure();
+        return;
+    }
     else if(user->getAccountIDs().empty()) {
         Tools::printFailure();
         return;
     }
-     else {
+    else {
         std::vector<int> ids = user->getAccountIDs();
         
         std::sort(ids.begin(), ids.end());
@@ -285,9 +289,42 @@ void BankSystem::queryAllUser() const{
         Tools::printFailure();
         return;
     }
-    std::vector<User> sortedUsers = users;
-    std::sort(sortedUsers.begin(), sortedUsers.end());
-    for(auto user:sortedUsers) {
-        std::cout<<user.getUserName()<<" "<<user.getAccountCount()<<std::endl;
+    else if(currentUser->getUserType()!=UserType::admin) {
+        Tools::printFailure();
+        return;
     }
+    else{
+        std::vector<User> sortedUsers = users;
+        std::sort(sortedUsers.begin(), sortedUsers.end());
+        for(auto user:sortedUsers) {
+            std::cout<<user.getUserName()<<" "<<user.getAccountCount()<<std::endl;
+        }
+    }
+}
+
+void BankSystem::switchUser(const std::string &username){
+    User* user=findUser(username);
+    if(user==nullptr) {
+        Tools::printFailure();
+        return;
+    }
+    else {
+        currentUser=user;
+        Tools::printSuccess();
+    }
+}
+
+void BankSystem::whoami() const{
+    if(currentUser==nullptr) {
+        Tools::printFailure();
+        return;
+    }
+    else {
+        std::cout<<currentUser->getUserName()<<std::endl;
+    }
+}
+
+
+BankSystem::~BankSystem(){
+    clearAccounts();
 }
