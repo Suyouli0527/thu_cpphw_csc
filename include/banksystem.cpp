@@ -139,12 +139,16 @@ void BankSystem::query(int id) const{
         Tools::printFailure();
         return;
     }
-    else {
-        std::cout<<"ID: "<<acc->getId()<<" "
+    std::cout<<"ID: "<<acc->getId()<<" "
         <<acc->getType()<<" "
         <<acc->getName()<<" "
         <<acc->getBalance()<<" "<<std::endl;
-}}
+    if(acc->getType()=='c') {
+        const CreditAccount* creditAcc=static_cast<const CreditAccount*>(acc);
+        std::cout<<" "<<creditAcc->getCredit();
+        }
+    std::cout<<std::endl;
+    }
 
 void BankSystem::queryallAccounts() const{
     if(accounts.empty()) {
@@ -163,14 +167,17 @@ void BankSystem::queryallAccounts() const{
     }
 }
 
-void BankSystem::deposit(int id, double amount){
-    Account* acc=findAccount(id);
-    if(acc==nullptr) {
+void BankSystem::deposit(int id, double amount) {
+    Account* acc = findAccount(id);
+    if (acc==nullptr) {
         Tools::printFailure();
         return;
     }
+    if (acc->deposit(currentDate, amount)) {
+        Tools::printSuccess();
+    }
     else {
-        acc->deposit(currentDate,amount);
+        Tools::printFailure();
     }
 }
 
@@ -181,21 +188,41 @@ void BankSystem::withdraw(int id, double amount){
         Tools::printFailure();
         return;
     }
+    if (acc->withdraw(currentDate, amount)) {
+        Tools::printSuccess();
+    }
     else {
-        acc->withdraw(currentDate,amount);
+        Tools::printFailure();
     }
 }
 
 void BankSystem::transfer(int srcId, int dstId, double amount){
+    if (srcId == dstId) { Tools::printFailure(); return; }
     Account* srcAcc=findAccount(srcId);
     Account* dstAcc=findAccount(dstId);
     if(srcAcc==nullptr||dstAcc==nullptr) {
         Tools::printFailure();
         return;
     }
-    else {
-        srcAcc->transfer(currentDate,*srcAcc,*dstAcc,amount);
+    const auto& userAccountIDs = currentUser->getAccountIDs();
+    bool belongsToCurrentUser = false;
+    for (int id : userAccountIDs) {
+        if (id == srcId) {
+            belongsToCurrentUser = true;
+            break;
+        }
     }
+    if (!belongsToCurrentUser) {
+        Tools::printFailure();
+        return;
+    }
+    if(!srcAcc->withdraw(currentDate, amount)) {
+        Tools::printFailure();
+        return;
+    }
+    dstAcc->deposit(currentDate, amount);
+    Tools::printSuccess();
+    
 }
 
 void BankSystem::showDate() const{
@@ -203,8 +230,9 @@ void BankSystem::showDate() const{
 }
 
 void BankSystem::addDays(int days){
-    currentDate.addDays(days);
-    updateAllAccountsInterest(currentDate);
+    if(currentDate.addDays(days)) {
+        updateAllAccountsInterest(currentDate);
+    }
 }
 
 void BankSystem::setDate(int year, int month, int day){
@@ -215,15 +243,19 @@ void BankSystem::setDate(int year, int month, int day){
 
 
 void BankSystem::createUser(const std::string &username){
+    if(username=="admin") {
+        Tools::printFailure();
+        return;
+    }
     if(findUser(username)) {
         Tools::printFailure();
         return;
     }
-    else if(username=="admin") {
+    else if(username.empty()) {
         Tools::printFailure();
         return;
     }
-    else if(currentUser->getUserType()!=UserType::admin) {
+    else if(!isAdmin()) {
         Tools::printFailure();
         return;
     }
@@ -241,7 +273,7 @@ void BankSystem::deleteUser(const std::string &username){
         Tools::printFailure();
         return;
     }
-    else if(currentUser->getUserType()!=UserType::admin) {
+    else if(!isAdmin()) {
         Tools::printFailure();
         return;
     }
@@ -259,6 +291,10 @@ void BankSystem::deleteUser(const std::string &username){
 }
 
 void BankSystem::queryUser(const std::string &username) const{
+    if(!isAdmin()) {
+        Tools::printFailure();
+        return;
+    }
     User* user=findUser(username);
     if(user==nullptr) {
         Tools::printFailure();
@@ -285,6 +321,10 @@ void BankSystem::queryUser(const std::string &username) const{
 }
 
 void BankSystem::queryAllUser() const{
+    if(!isAdmin()) {
+        Tools::printFailure();
+        return;
+    }
     if(users.empty()) {
         Tools::printFailure();
         return;
