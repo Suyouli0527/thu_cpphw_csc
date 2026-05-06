@@ -54,7 +54,7 @@ void BankSystem::openAccount(int id,char type,std::string accountName,double bal
         Tools::printFailure();
         return;
     }
-    else if(type!='s'&&type!='c') {
+    else if(type!='S'&&type!='C'&&type!='s'&&type!='c') {
         Tools::printFailure();
         return;
     }
@@ -69,7 +69,7 @@ void BankSystem::openAccount(int id,char type,std::string accountName,double bal
     else {
         Account* newAccount;
         Date openDate=currentDate;
-        if(type=='s') newAccount=new SavingAccount(id,type,accountName,balance,openDate);
+        if(type=='S'||type=='s') newAccount=new SavingAccount(id,type,accountName,balance,openDate);
         else newAccount=new CreditAccount(id,type,accountName,balance,openDate);
         accounts.push_back(newAccount);
         currentUser->addAccountID(id);
@@ -242,7 +242,11 @@ void BankSystem::setDate(int year, int month, int day){
 }
 
 
-void BankSystem::createUser(const std::string &username){
+void BankSystem::createUser(const std::string &username){  
+    if(!isAdmin()) {
+        Tools::printFailure();
+        return;
+    }
     if(username=="admin") {
         Tools::printFailure();
         return;
@@ -251,14 +255,13 @@ void BankSystem::createUser(const std::string &username){
         Tools::printFailure();
         return;
     }
+
+
     else if(username.empty()) {
         Tools::printFailure();
         return;
     }
-    else if(!isAdmin()) {
-        Tools::printFailure();
-        return;
-    }
+
     else {
     users.emplace_back(username,UserType::normal);
     Tools::printSuccess();

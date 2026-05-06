@@ -59,7 +59,7 @@ public:
             System.transfer(srcId, dstId, amount);
         } else if (cmd == "SHOW_DATE") {
             System.showDate();
-        } else if (cmd == "ADD_DAYS") {
+        } else if (cmd == "ADD_DAY") {
             int days;
             iss >> days;
             System.addDays(days);
