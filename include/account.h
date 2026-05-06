@@ -33,7 +33,7 @@ class Account{
 
 class SavingAccount:public Account{
     public:
-        SavingAccount(int id,char type,const std::string &name,int balance,const Date &openDate);
+        SavingAccount(int id,char type,const std::string &name,double balance,const Date &openDate);
         void deposit(const Date &date,double amount);
         void withdraw(const Date &date,double amount); 
         void transfer(const Date &date,Account &target,double amount);
@@ -45,12 +45,12 @@ class CreditAccount:public Account{
     private:
         double credit;
     public:
-        CreditAccount(int id,char type,const std::string &name,double credit,const Date &openDate);
+        CreditAccount(int id,char type,const std::string &name,double creditAmount,const Date &openDate);
         double getCredit()const{return credit;};
         void deposit(const Date &date,double amount);
         void withdraw(const Date &date,double amount);
         void transfer(const Date &date,Account &target,double amount);
-        bool modifyCredit(double newCredit);
+        void modifyCredit(double newCredit);
         void settleMonthlyInterest();
         
 };

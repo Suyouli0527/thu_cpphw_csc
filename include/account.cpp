@@ -2,7 +2,8 @@
 #include <iostream>
 #include <string>
 
-Account::Account(int id,char type,const std::string &name,double balance,const Date &openDate):id(id),type(type),name(name),balance(balance),openDate(openDate){};
+Account::Account(int id,char type,const std::string &name,double balance,const Date &openDate)
+:id(id),type(type),name(name),balance(balance),openDate(openDate),interest(0.0),lastInterestDate(openDate){};
 
 bool Account::modifyName(const std::string &newName){
         name=newName;
@@ -13,7 +14,9 @@ bool Account::modifyName(const std::string &newName){
 void Account::settleMonthlyInterest() {
     balance += interest;
     interest = 0.0;
-}void Account::updateInterest(const Date& targetDate) {
+}
+
+void Account::updateInterest(const Date& targetDate) {
     Date d = lastInterestDate;
     d.addDays(1);                     
     while (d - targetDate <= 0) {      
@@ -32,7 +35,7 @@ void Account::settleMonthlyInterest() {
 }
 
 
-SavingAccount::SavingAccount(int id,char type,const std::string &name,int balance,const Date &openDate):
+SavingAccount::SavingAccount(int id,char type,const std::string &name,double balance,const Date &openDate):
     Account(id,'s',name,balance,openDate){};
 
 
@@ -49,8 +52,8 @@ void SavingAccount::transfer(const Date &date,Account &target,double amount){
     target.deposit(date,amount);
 }
 
-CreditAccount::CreditAccount(int id,char type,const std::string &name,double credit,const Date &openDatet):
-    Account(id,'c',name,0,openDate),credit(credit){};
+CreditAccount::CreditAccount(int id,char type,const std::string &name,double creditAmount,const Date &openDate):
+    Account(id,'c',name,0,openDate),credit(creditAmount){};
 
 void CreditAccount::deposit (const Date &date,double amount){
     balance+=amount;
@@ -65,7 +68,7 @@ void CreditAccount::transfer(const Date &date,Account &target,double amount){
     target.deposit(date,amount);
 }
 
-bool CreditAccount::modifyCredit(double newCredit){
+void CreditAccount::modifyCredit(double newCredit){
     credit=newCredit;
 }
 
