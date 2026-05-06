@@ -47,15 +47,17 @@ Date::Date(int y, int m, int d) {
 };
 
 bool Date::setDays(int y,int m,int d){
-    if(!isLegalDate(y,m,d)) {return false;}
+    if(!isLegalDate(y,m,d)) {Tools::printFailure(); return false;}
     int years=y-1;
     int newTotal=years*365+years/4-years/100+years/400+days_before_month[m-1]+d;
     if(isleapYear(y)&&m>2) newTotal++;
-    if(newTotal<=totalDays) {return false;}
+    if(newTotal<=totalDays) {Tools::printFailure(); return false;}
         year=y;
         month=m;
         day=d;  
         cast();
+        totalDays=newTotal;
+        Tools::printSuccess();
         return true;
 };
 int Date::getMaxDay()const{
@@ -79,9 +81,12 @@ if(n>0){
     }
 }
      cast();
+    Tools::printSuccess();
     return true;}
      
-else{return false;}
+else{
+    Tools::printFailure();
+    return false;}
 }
 
 void Date::cast(){
@@ -89,7 +94,8 @@ void Date::cast(){
     weekday=weekName[totalDays%7];
 }
 
-void Date::showDate()const {
+bool Date::showDate()const {
     cout<<getweekDay()<<", "<<getMonth()<<" "<<getDay()<<", "<<getYear()<<endl;
+    return true;
 };
 

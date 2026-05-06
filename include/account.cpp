@@ -39,37 +39,75 @@ SavingAccount::SavingAccount(int id,char type,const std::string &name,double bal
     Account(id,'s',name,balance,openDate){};
 
 
-void SavingAccount::deposit(const Date &date,double amount){
+bool SavingAccount::deposit(const Date &date,double amount){
+    if(amount<0) {
+        Tools::printFailure();
+        return false;
+    }
         balance+=amount;
+        Tools::printSuccess();
+        return true;
 }
 
-void SavingAccount::withdraw(const Date &date,double amount){
-        balance-=amount;
+bool SavingAccount::withdraw(const Date &date,double amount){
+      if(amount>balance||amount<0) {
+        Tools::printFailure();
+        return false;
+      }
+      balance-=amount;
+      Tools::printSuccess();
+      return true;
 }
 
-void SavingAccount::transfer(const Date &date,Account &target,double amount){
+bool SavingAccount::transfer(const Date &date,Account &target,double amount){
+    if(amount <0||amount > balance) {
+        Tools::printFailure();
+        return false;
+    }
     balance-=amount;
     target.deposit(date,amount);
+    Tools::printSuccess();
+    return true;
 }
 
 CreditAccount::CreditAccount(int id,char type,const std::string &name,double creditAmount,const Date &openDate):
     Account(id,'c',name,0,openDate),credit(creditAmount){};
 
-void CreditAccount::deposit (const Date &date,double amount){
-    balance+=amount;
+bool CreditAccount::deposit(const Date &date,double amount){
+    if(amount <=0) {
+        Tools::printFailure();
+        return false;
+    }
+    balance += amount;
+    Tools::printSuccess();
+    return true;
 }
 
-void CreditAccount::withdraw(const Date &date,double amount){
+bool CreditAccount::withdraw(const Date &date,double amount){
+    if(amount <0||amount > balance + credit) {
+        Tools::printFailure();
+        return false;
+    }
     balance-=amount;
+    Tools::printSuccess();
+    return true;
 }
 
-void CreditAccount::transfer(const Date &date,Account &target,double amount){
+bool CreditAccount::transfer(const Date &date,Account &target,double amount){
+    if(amount <0||amount > balance + credit) {
+        Tools::printFailure();
+        return false;
+    }
     balance-=amount;
     target.deposit(date,amount);
+    Tools::printSuccess();
+    return true;
 }
 
-void CreditAccount::modifyCredit(double newCredit){
+bool CreditAccount::modifyCredit(double newCredit){
     credit=newCredit;
+    Tools::printSuccess();
+    return true;
 }
 
 void CreditAccount::settleMonthlyInterest(){

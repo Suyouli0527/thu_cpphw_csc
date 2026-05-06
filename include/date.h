@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "Tools.h"
 class Date{
     public:
         Date()=default;
@@ -13,7 +14,7 @@ class Date{
         static int daysInMonth(int y, int m);
         int daysInYear() const;
         static bool isLegalDate(int y,int m,int d);
-        void showDate()const;
+        bool showDate()const;
         bool addDays(int n);
         bool setDays(int y,int m,int d);
         int operator-(const Date &date) const{
