@@ -10,14 +10,13 @@ class BankSystem {
     private:
         Date currentDate;
         User  *currentUser;
-        Account *currentAccount;
         std::vector<User> users;
         std::vector<Account*> accounts;
         
         Account* findAccount(int id) const;
         User* findUser(const std::string &name) const;
         void updateAllAccountsInterest(const Date &newDate);
-        void removeAccount();
+        void removeAccount(int id);
     public:
         BankSystem(); 
         ~BankSystem();

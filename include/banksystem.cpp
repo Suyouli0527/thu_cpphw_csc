@@ -25,8 +25,7 @@ void BankSystem::updateAllAccountsInterest(const Date &newDate) {
     }
 }
 
-void BankSystem::removeAccount() {
-    int id = currentAccount->getId();
+void BankSystem::removeAccount(int id) {
     currentUser->removeAccountID(id);
     for (auto it = accounts.begin(); it != accounts.end(); ++it) {
         if ((*it)->getId() == id) {
@@ -90,7 +89,7 @@ void BankSystem::closeAccount(int id){
         return;
     }
     else {
-        removeAccount();
+        removeAccount(id);
         Tools::printSuccess();
     }
 }
@@ -151,22 +150,23 @@ void BankSystem::query(int id) const{
     }
 
 void BankSystem::queryAllAccounts() const{
-    if(currentUser->getAccountIDs().empty()) {
+    if(currentUser==nullptr) {
         Tools::printFailure();
         return;
     }
-    std::vector<Account*> sortedAccounts = accounts;
-    std::sort(sortedAccounts.begin(), sortedAccounts.end(), [](Account* a, Account* b) {
-        return a->getId() < b->getId();
-    });
-    for(auto acc:sortedAccounts) {
-        std::cout<<acc->getId()<<" "
-        <<acc->getType()<<" "
-        <<acc->getName()<<" "
-        <<acc->getBalance()<<" "<<std::endl;
+    const auto& accountIDs = currentUser->getAccountIDs();
+    if(accountIDs.empty()) {
+        Tools::printFailure();
+        return;
+    }
+
+    
+    std::vector<int> sortedAccounts = accountIDs;
+    std::sort(sortedAccounts.begin(), sortedAccounts.end());
+    for (int id : accountIDs) {
+        query(id);
     }
 }
-
 void BankSystem::deposit(int id, double amount) {
     Account* acc = findAccount(id);
     if (acc==nullptr) {

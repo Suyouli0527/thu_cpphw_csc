@@ -57,31 +57,31 @@ public:
             double amount;
             iss >> srcId >> dstId >> amount;
             System.transfer(srcId, dstId, amount);
-        } else if (cmd == "SHOWDATE") {
+        } else if (cmd == "SHOW_DATE") {
             System.showDate();
         } else if (cmd == "ADD_DAYS") {
             int days;
             iss >> days;
             System.addDays(days);
-        } else if (cmd == "SETDATE") {
+        } else if (cmd == "SET_DATE") {
             int year, month, day;
             iss >> year >> month >> day;
             System.setDate(year, month, day);
-        } else if (cmd == "CREATEUSER") {
+        } else if (cmd == "CREATE_USER") {
             std::string username;
             iss >> username;
             System.createUser(username);
-        } else if (cmd == "DELETEUSER") {
+        } else if (cmd == "DELETE_USER") {
             std::string username;
             iss >> username;
             System.deleteUser(username);
-        } else if (cmd == "QUERYUSER") {
+        } else if (cmd == "QUERY_USER") {
             std::string username;
             iss >> username;
             System.queryUser(username);
-        } else if (cmd == "QUERYALLUSER") {
+        } else if (cmd == "QUERY_USERLIST") {
              System.queryAllUser();
-        } else if (cmd == "SWITCHUSER") {
+        } else if (cmd == "SWITCH") {
             std::string username;
             iss >> username;
             System.switchUser(username);
