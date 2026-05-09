@@ -27,7 +27,7 @@ void BankSystem::updateAllAccountsInterest(const Date &newDate) {
 }
 
 void BankSystem::removeAccount(int id) {
-    currentUser->removeAccountID(id);
+    findUser(currentUserName)->removeAccountID(id);
     for (auto it = accounts.begin(); it != accounts.end(); ++it) {
         if ((*it)->getId() == id) {
             delete *it;
@@ -37,10 +37,9 @@ void BankSystem::removeAccount(int id) {
     }
 }
 
-BankSystem::BankSystem():currentDate(1970,1,1),currentUser(nullptr){
+BankSystem::BankSystem():currentDate(1970,1,1),currentUserName("default"){
     users.emplace_back("admin",UserType::admin);
     users.emplace_back("default",UserType::normal);
-    currentUser = findUser("default");
 }
 
 void BankSystem::clearAccounts() {
@@ -73,7 +72,7 @@ void BankSystem::openAccount(int id,char type,std::string accountName,double bal
         if(type=='S'||type=='s') newAccount=new SavingAccount(id,type,accountName,balance,openDate);
         else newAccount=new CreditAccount(id,type,accountName,balance,openDate);
         accounts.push_back(newAccount);
-        currentUser->addAccountID(id);
+        findUser(currentUserName)->addAccountID(id);
         Tools::printSuccess();
         logRecords.push_back("OPEN "+std::to_string(id)+" "+type+" "+accountName+" "+std::to_string(balance));
     }
@@ -155,11 +154,11 @@ void BankSystem::query(int id) const{
     }
 
 void BankSystem::queryAllAccounts() const{
-    if(currentUser==nullptr) {
+    if(currentUserName.empty()) {
         Tools::printFailure();
         return;
     }
-    const auto& accountIDs = currentUser->getAccountIDs();
+    const auto& accountIDs = findUser(currentUserName)->getAccountIDs();
     if(accountIDs.empty()) {
         Tools::printFailure();
         return;
@@ -211,7 +210,7 @@ void BankSystem::transfer(int srcId, int dstId, double amount){
         Tools::printFailure();
         return;
     }
-    const auto& userAccountIDs = currentUser->getAccountIDs();
+    const auto& userAccountIDs = findUser(currentUserName)->getAccountIDs();
     bool belongsToCurrentUser = false;
     for (int id : userAccountIDs) {
         if (id == srcId) {
@@ -350,7 +349,7 @@ void BankSystem::queryAllUser() const{
         Tools::printFailure();
         return;
     }
-    else if(currentUser->getUserType()!=UserType::admin) {
+    else if(!isAdmin()) {
         Tools::printFailure();
         return;
     }
@@ -370,20 +369,25 @@ void BankSystem::switchUser(const std::string &username){
         return;
     }
     else {
-        currentUser=user;
+        currentUserName=username;
         Tools::printSuccess();
         logRecords.push_back("SWITCH "+username);
     }
 }
 
 void BankSystem::whoami() const{
-    if(currentUser==nullptr) {
+    if(currentUserName.empty()) {
         Tools::printFailure();
         return;
     }
     else {
-        std::cout<<currentUser->getUserName()<<std::endl;
+        std::cout<<currentUserName<<std::endl;
     }
+}
+
+bool BankSystem::isAdmin() const{
+    User* user = findUser(currentUserName);
+    return user != nullptr && user->isAdmin();
 }
 
 bool BankSystem::islegalName(const std::string &name) const{

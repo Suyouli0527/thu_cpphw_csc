@@ -9,7 +9,7 @@
 class BankSystem {
     private:
         Date currentDate;
-        User  *currentUser;
+        std::string currentUserName;
         std::vector<User> users;
         std::vector<Account*> accounts;
         std::vector<std::string> logRecords;
@@ -57,8 +57,8 @@ class BankSystem {
 
         void SaveLog(const std::string &filename) const;
         
-        bool isLoggedIn() const { return currentUser != nullptr; }
-        bool isAdmin() const { return isLoggedIn() && currentUser->isAdmin(); }
+        bool isLoggedIn() const { return !currentUserName.empty(); }
+        bool isAdmin() const;
         bool islegalName(const std::string &name) const;
         bool isInitialState() const { return logRecords.empty(); }
 };
