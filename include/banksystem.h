@@ -13,11 +13,14 @@ class BankSystem {
         std::vector<User> users;
         std::vector<Account*> accounts;
         std::vector<std::string> logRecords;
-        
+        bool m_silent = false;
+
         Account* findAccount(int id) const;
         User* findUser(const std::string &name) const;
         void updateAllAccountsInterest(const Date &newDate);
         void removeAccount(int id);
+        void printSuccess() const;
+        void printFailure() const;
     public:
         BankSystem(); 
         ~BankSystem();

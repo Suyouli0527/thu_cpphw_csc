@@ -49,21 +49,29 @@ void BankSystem::clearAccounts() {
     accounts.clear();
 }
 
+void BankSystem::printSuccess() const{
+    if(!m_silent) printSuccess();
+}
+
+void BankSystem::printFailure() const{
+    if(!m_silent) printFailure();
+}
+
 void BankSystem::openAccount(int id,char type,std::string accountName,double balance){
     if(findAccount(id)!=nullptr) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else if(type!='S'&&type!='C'&&type!='s'&&type!='c') {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else if(accountName.empty()) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else if(balance<0) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else {
@@ -73,7 +81,7 @@ void BankSystem::openAccount(int id,char type,std::string accountName,double bal
         else newAccount=new CreditAccount(id,type,accountName,balance,openDate);
         accounts.push_back(newAccount);
         findUser(currentUserName)->addAccountID(id);
-        Tools::printSuccess();
+        printSuccess();
         logRecords.push_back("OPEN "+std::to_string(id)+" "+type+" "+accountName+" "+Tools::formatAmount(balance));
     }
 }
@@ -82,16 +90,16 @@ void BankSystem::openAccount(int id,char type,std::string accountName,double bal
 void BankSystem::closeAccount(int id){
     Account* acc=findAccount(id);
     if(acc==nullptr) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else if(acc->getBalance()!=0) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else {
         removeAccount(id);
-        Tools::printSuccess();
+        printSuccess();
         logRecords.push_back("CLOSE "+std::to_string(id));
     }
 }
@@ -99,16 +107,16 @@ void BankSystem::closeAccount(int id){
 void BankSystem::modifyName(int id,const std::string &username){
     Account* acc=findAccount(id);
     if(acc==nullptr) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else if(username.empty()) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else {
         acc->modifyName(username);
-        Tools::printSuccess();
+        printSuccess();
         logRecords.push_back("MODIFY_NAME "+std::to_string(id)+" "+username);
     }
 }
@@ -117,21 +125,21 @@ void BankSystem::modifyName(int id,const std::string &username){
 void BankSystem::modifyCredit(int id,double newCredit){
     Account* acc=findAccount(id);
     if(acc==nullptr) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else if(acc->getType()!='C') {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else if(newCredit<0) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else {
         CreditAccount* creditAcc=static_cast<CreditAccount*>(acc);
         creditAcc->modifyCredit(newCredit);
-        Tools::printSuccess();
+        printSuccess();
         logRecords.push_back("MODIFY_CREDIT "+std::to_string(id)+" "+Tools::formatAmount(newCredit));
     }
 }
@@ -139,7 +147,7 @@ void BankSystem::modifyCredit(int id,double newCredit){
 void BankSystem::query(int id) const{
     Account* acc=findAccount(id);
     if(acc==nullptr) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     std::cout<<acc->getId()<<" "
@@ -155,12 +163,12 @@ void BankSystem::query(int id) const{
 
 void BankSystem::queryAllAccounts() const{
     if(currentUserName.empty()) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     const auto& accountIDs = findUser(currentUserName)->getAccountIDs();
     if(accountIDs.empty()) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
 
@@ -174,15 +182,15 @@ void BankSystem::queryAllAccounts() const{
 void BankSystem::deposit(int id, double amount) {
     Account* acc = findAccount(id);
     if (acc==nullptr) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     if (acc->deposit(currentDate, amount)) {
-        Tools::printSuccess();
+        printSuccess();
         logRecords.push_back("DEPOSIT "+std::to_string(id)+" "+Tools::formatAmount(amount));
     }
     else {
-        Tools::printFailure();
+        printFailure();
     }
 }
 
@@ -190,24 +198,24 @@ void BankSystem::deposit(int id, double amount) {
 void BankSystem::withdraw(int id, double amount){
     Account* acc=findAccount(id);
     if(acc==nullptr) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     if (acc->withdraw(currentDate, amount)) {
-        Tools::printSuccess();
+        printSuccess();
         logRecords.push_back("WITHDRAW "+std::to_string(id)+" "+Tools::formatAmount(amount));
     }
     else {
-        Tools::printFailure();
+        printFailure();
     }
 }
 
 void BankSystem::transfer(int srcId, int dstId, double amount){
-    if (srcId == dstId) { Tools::printFailure(); return; }
+    if (srcId == dstId) { printFailure(); return; }
     Account* srcAcc=findAccount(srcId);
     Account* dstAcc=findAccount(dstId);
     if(srcAcc==nullptr||dstAcc==nullptr) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     const auto& userAccountIDs = findUser(currentUserName)->getAccountIDs();
@@ -219,15 +227,15 @@ void BankSystem::transfer(int srcId, int dstId, double amount){
         }
     }
     if (!belongsToCurrentUser) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     if(!srcAcc->withdraw(currentDate, amount)) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     dstAcc->deposit(currentDate, amount);
-    Tools::printSuccess();
+    printSuccess();
     logRecords.push_back("TRANSFER "+std::to_string(srcId)+" "+std::to_string(dstId)+" "+Tools::formatAmount(amount));
 }
 
@@ -238,11 +246,11 @@ void BankSystem::showDate() const{
 void BankSystem::addDays(int days){
     if(currentDate.addDays(days)) {
         updateAllAccountsInterest(currentDate);
-        Tools::printSuccess();
+        printSuccess();
         logRecords.push_back("ADD_DAYS "+std::to_string(days));
     }
     else {
-        Tools::printFailure();
+        printFailure();
     }
 }
 
@@ -256,56 +264,56 @@ void BankSystem::setDate(int year, int month, int day){
 
 void BankSystem::createUser(const std::string &username){  
     if(!isAdmin()) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
 
     if(!islegalName(username)) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
 
     if(username=="admin") {
-        Tools::printFailure();
+        printFailure();
         return;
     }
 
 
     if(findUser(username)) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
 
 
     else {
     users.emplace_back(username,UserType::normal);
-    Tools::printSuccess();
+    printSuccess();
     logRecords.push_back("CREATE_USER "+username);
 }
 }
 void BankSystem::deleteUser(const std::string &username){
     if(!isAdmin()) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     if(username=="admin") {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     if(findUser(username)==nullptr) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     
     if(findUser(username)->getAccountIDs().size()>0) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else {
         for (int i = users.size() - 1; i >= 0; i--) {
             if (users[i].getUserName() == username) {
                 users.erase(users.begin() + i);
-                Tools::printSuccess();
+                printSuccess();
                 logRecords.push_back("DELETE_USER "+username);
                 return;
             }
@@ -316,16 +324,16 @@ void BankSystem::deleteUser(const std::string &username){
 
 void BankSystem::queryUser(const std::string &username) const{
     if(!isAdmin()) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     User* user=findUser(username);
     if(user==nullptr) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else if(user->getAccountIDs().empty()) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else {
@@ -342,15 +350,11 @@ void BankSystem::queryUser(const std::string &username) const{
 
 void BankSystem::queryAllUser() const{
     if(!isAdmin()) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     if(users.empty()) {
-        Tools::printFailure();
-        return;
-    }
-    else if(!isAdmin()) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else{
@@ -365,19 +369,19 @@ void BankSystem::queryAllUser() const{
 void BankSystem::switchUser(const std::string &username){
     User* user=findUser(username);
     if(user==nullptr) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else {
         currentUserName=username;
-        Tools::printSuccess();
+        printSuccess();
         logRecords.push_back("SWITCH "+username);
     }
 }
 
 void BankSystem::whoami() const{
     if(currentUserName.empty()) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     else {
@@ -400,7 +404,7 @@ bool BankSystem::islegalName(const std::string &name) const{
 
 void BankSystem::showLog() const{
     if(logRecords.empty()) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
 
@@ -414,11 +418,11 @@ void BankSystem::showLog() const{
 
 void BankSystem::rollback(int n){
     if(n<0||n>logRecords.size()) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
     if(n==0) {
-        Tools::printSuccess();
+        printSuccess();
         return;
     }
 
@@ -433,6 +437,7 @@ void BankSystem::rollback(int n){
     currentUserName = "default";
     logRecords.clear();
 
+    m_silent = true;
     for (const auto& cmd : cmdsToReplay) {
         std::istringstream iss(cmd);
         std::string action;
@@ -497,20 +502,21 @@ void BankSystem::rollback(int n){
             setDate(year, month, day);
         }
     }
+    m_silent = false;
 
-    Tools::printSuccess();
+    printSuccess();
 }
 
 void BankSystem::SaveLog(const std::string &filename) const{
     std::ofstream file(filename);
     if (!file) {
-        Tools::printFailure();
+        printFailure();
         return;
     }
      for ( int i = 0; i < logRecords.size(); i++) {
         file << (i + 1) << " " << logRecords[i] << std::endl;
     }
-    Tools::printSuccess();
+    printSuccess();
 }
 
 

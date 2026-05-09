@@ -2,10 +2,10 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
-
 class Tools {
 public:
     static void printSuccess(){
+        
         std::cout<<'1'<<std::endl;
     }
     static void printFailure(){
