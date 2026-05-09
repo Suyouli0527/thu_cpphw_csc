@@ -2,6 +2,7 @@
 #include "banksystem.h"
 #include "tools.h"
 #include <sstream>
+#include <fstream>
 #include <string>
 
 
@@ -119,9 +120,44 @@ public:
             iss>>n;
             System.rollback(n);
         }
+        else if(cmd=="SAVE"){
+            std::string filename;
+            iss>>filename;
+            System.SaveLog(filename);
+        }
+         else if (cmd == "RESUME") {
+            std::string filename;
+            iss >> filename;
+            if (!System.isInitialState()) {
+            Tools::printFailure();
+            return;
+         }
+            std::ifstream file(filename);
+            if (!file.is_open()) {
+            Tools::printFailure();
+            return;
+        }
+            std::vector<std::string> subCommands;
+            std::string line;
+            while (std::getline(file, line)) {
+            auto pos = line.find(' ');
+            if (pos == std::string::npos) {
+            Tools::printFailure();
+            return;
+        }
+        subCommands.push_back(line.substr(pos + 1));
+        }
+        file.close();
+        for (const auto &cmd : subCommands) {
+            execute(cmd);
+        }
+        Tools::printSuccess();
+}
+
         else {
             Tools::printFailure();
         }
-}
+        
+    }
     virtual ~Command() = default;
 };

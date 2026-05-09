@@ -1,5 +1,6 @@
 #include "banksystem.h"
 #include <iomanip>
+#include <fstream>
 User* BankSystem::findUser(const std::string& name) const{
     for (const auto &user : users) {
         if (user.getUserName() == name) {
@@ -417,6 +418,19 @@ void BankSystem::rollback(int n){
         Tools::printSuccess();
     }
 }
+
+void BankSystem::SaveLog(const std::string &filename) const{
+    std::ofstream file(filename);
+    if (!file) {
+        Tools::printFailure();
+        return;
+    }
+     for ( int i = 0; i < logRecords.size(); i++) {
+        file << (i + 1) << " " << logRecords[i] << std::endl;
+    }
+    Tools::printSuccess();
+}
+
 
 BankSystem::~BankSystem(){
     clearAccounts();

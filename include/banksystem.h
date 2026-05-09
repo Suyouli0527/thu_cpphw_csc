@@ -54,8 +54,11 @@ class BankSystem {
         
         void showLog() const;
         void rollback(int n);
+
+        void SaveLog(const std::string &filename) const;
         
         bool isLoggedIn() const { return currentUser != nullptr; }
         bool isAdmin() const { return isLoggedIn() && currentUser->isAdmin(); }
         bool islegalName(const std::string &name) const;
+        bool isInitialState() const { return logRecords.empty(); }
 };
