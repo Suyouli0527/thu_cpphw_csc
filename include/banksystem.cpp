@@ -409,8 +409,12 @@ void BankSystem::showLog() const{
 }
 
 void BankSystem::rollback(int n){
-    if(n<=0||n>logRecords.size()) {
+    if(n<0||n>logRecords.size()) {
         Tools::printFailure();
+        return;
+    }
+    if(n==0) {
+        Tools::printSuccess();
         return;
     }
     else {

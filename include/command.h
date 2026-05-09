@@ -112,9 +112,10 @@ public:
             System.whoami();
         } 
     
-        else if(cmd=="SHOW_LOG"){
+        else if(cmd=="LOG"){
             System.showLog();
         }
+        
         else if(cmd=="ROLLBACK"){
             int n;
             iss>>n;
