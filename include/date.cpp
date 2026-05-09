@@ -32,7 +32,7 @@ bool Date::isLegalDate(int y,int m,int d){
 int Date::daysInYear()const {
     return isleapYear(year)?366:365;
 }
-    // 构造函数
+
 Date::Date(int y, int m, int d) {
     if(!isLegalDate(y,m,d)) throw std::invalid_argument("Invalid date");
     year = y;
@@ -89,7 +89,7 @@ else{
 
 void Date::cast(){
     month_name=monthName[month];
-    weekday=weekName[totalDays%7];
+    weekday=weekName[(4+totalDays)%7];
 }
 
 bool Date::showDate()const {

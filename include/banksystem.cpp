@@ -255,16 +255,18 @@ void BankSystem::createUser(const std::string &username){
         Tools::printFailure();
         return;
     }
+
     if(findUser(username)) {
         Tools::printFailure();
         return;
     }
 
 
-    else if(username.empty()) {
+    if(username.empty()) {
         Tools::printFailure();
         return;
     }
+
 
     else {
     users.emplace_back(username,UserType::normal);

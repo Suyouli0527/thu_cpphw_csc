@@ -88,7 +88,7 @@ public:
         } else if (cmd == "WHOAMI") {
             System.whoami();
         } else {
-            std::cout << "Unknown command: " << cmd << std::endl;
+            std::cout <<'0' << std::endl;
         }
     }
     virtual ~Command() = default;

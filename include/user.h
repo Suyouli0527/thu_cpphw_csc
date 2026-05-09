@@ -22,7 +22,6 @@ class User {
         void removeAccountID(const int &id) {
             accountIDs.erase(std::remove(accountIDs.begin(), accountIDs.end(), id), accountIDs.end());
         }
-
         bool isAdmin() const { return userType == UserType::admin; }
         bool operator<(const User& other) const {
         return userName < other.userName;
