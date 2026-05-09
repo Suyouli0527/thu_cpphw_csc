@@ -52,17 +52,16 @@ Date::Date(int y, int m, int d) {
 };
 
 bool Date::setDays(int y,int m,int d){
-    if(!isLegalDate(y,m,d)) {Tools::printFailure(); return false;}
+    if(!isLegalDate(y,m,d)) return false;
     int years=y-1;
     int newTotal=years*365+years/4-years/100+years/400+days_before_month[m-1]+d;
     if(isleapYear(y)&&m>2) newTotal++;
-    if(newTotal<=totalDays) {Tools::printFailure(); return false;}
+    if(newTotal<=totalDays) return false;
         year=y;
         month=m;
-        day=d;  
+        day=d;
         totalDays=newTotal;
         cast();
-        Tools::printSuccess();
         return true;
 };
 int Date::getMaxDay()const{

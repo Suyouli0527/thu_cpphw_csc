@@ -90,7 +90,7 @@ void BankSystem::openAccount(int id,char type,std::string accountName,double bal
 
 void BankSystem::closeAccount(int id){
     Account* acc=findAccount(id);
-    if(acc==nullptr) {
+    if(acc==nullptr || !ownsAccount(id)) {
         printFailure();
         return;
     }
@@ -107,7 +107,7 @@ void BankSystem::closeAccount(int id){
 
 void BankSystem::modifyName(int id,const std::string &username){
     Account* acc=findAccount(id);
-    if(acc==nullptr) {
+    if(acc==nullptr || !ownsAccount(id)) {
         printFailure();
         return;
     }
@@ -125,7 +125,7 @@ void BankSystem::modifyName(int id,const std::string &username){
 
 void BankSystem::modifyCredit(int id,double newCredit){
     Account* acc=findAccount(id);
-    if(acc==nullptr) {
+    if(acc==nullptr || !ownsAccount(id)) {
         printFailure();
         return;
     }
@@ -147,20 +147,12 @@ void BankSystem::modifyCredit(int id,double newCredit){
 
 void BankSystem::query(int id) const{
     Account* acc=findAccount(id);
-    if(acc==nullptr) {
+    if(acc==nullptr || !ownsAccount(id)) {
         printFailure();
         return;
     }
-    std::cout<<acc->getId()<<" "
-        <<acc->getType()<<" "
-        <<acc->getName()<<" "
-        <<Tools::formatAmount(acc->getBalance());
-    if(acc->getType()=='C') {
-        const CreditAccount* creditAcc=static_cast<const CreditAccount*>(acc);
-        std::cout<<" "<<Tools::formatAmount(creditAcc->getCredit());
-        }
-    std::cout<<std::endl;
-    }
+    printAccountInfo(id);
+}
 
 void BankSystem::queryAllAccounts() const{
     if(currentUserName.empty()) {
@@ -182,7 +174,7 @@ void BankSystem::queryAllAccounts() const{
 }
 void BankSystem::deposit(int id, double amount) {
     Account* acc = findAccount(id);
-    if (acc==nullptr) {
+    if (acc==nullptr || !ownsAccount(id)) {
         printFailure();
         return;
     }
@@ -198,7 +190,7 @@ void BankSystem::deposit(int id, double amount) {
 
 void BankSystem::withdraw(int id, double amount){
     Account* acc=findAccount(id);
-    if(acc==nullptr) {
+    if(acc==nullptr || !ownsAccount(id)) {
         printFailure();
         return;
     }
@@ -258,7 +250,11 @@ void BankSystem::addDays(int days){
 void BankSystem::setDate(int year, int month, int day){
     if(currentDate.setDays(year,month,day)) {
         updateAllAccountsInterest(currentDate);
+        printSuccess();
         logRecords.push_back("SET_DATE "+std::to_string(year)+" "+std::to_string(month)+" "+std::to_string(day));
+    }
+    else {
+        printFailure();
     }
 }
 
@@ -339,11 +335,11 @@ void BankSystem::queryUser(const std::string &username) const{
     }
     else {
         std::vector<int> ids = user->getAccountIDs();
-        
+
         std::sort(ids.begin(), ids.end());
-        
+
         for(auto id : ids) {
-            query(id);
+            printAccountInfo(id);
         }
     }
 
@@ -403,6 +399,27 @@ bool BankSystem::islegalName(const std::string &name) const{
     return true;
 }
 
+bool BankSystem::ownsAccount(int id) const{
+    const auto& myIDs = findUser(currentUserName)->getAccountIDs();
+    for (int aid : myIDs) {
+        if (aid == id) return true;
+    }
+    return false;
+}
+
+void BankSystem::printAccountInfo(int id) const{
+    Account* acc = findAccount(id);
+    std::cout<<acc->getId()<<" "
+        <<acc->getType()<<" "
+        <<acc->getName()<<" "
+        <<Tools::formatAmount(acc->getBalance());
+    if(acc->getType()=='C') {
+        const CreditAccount* creditAcc=static_cast<const CreditAccount*>(acc);
+        std::cout<<" "<<Tools::formatAmount(creditAcc->getCredit());
+    }
+    std::cout<<std::endl;
+}
+
 void BankSystem::showLog() const{
     if(logRecords.empty()) {
         printFailure();
@@ -422,9 +439,8 @@ void BankSystem::rollback(int n){
         printFailure();
         return;
     }
-    if(n==0) n = logRecords.size();
 
-    int keepCount = logRecords.size() - n;
+    int keepCount = n;
     std::vector<std::string> cmdsToReplay(logRecords.begin(), logRecords.begin() + keepCount);
 
     clearAccounts();

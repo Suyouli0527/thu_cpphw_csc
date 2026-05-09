@@ -21,6 +21,8 @@ class BankSystem {
         void removeAccount(int id);
         void printSuccess() const;
         void printFailure() const;
+        bool ownsAccount(int id) const;
+        void printAccountInfo(int id) const;
     public:
         BankSystem(); 
         ~BankSystem();
@@ -64,4 +66,5 @@ class BankSystem {
         bool isAdmin() const;
         bool islegalName(const std::string &name) const;
         bool isInitialState() const { return logRecords.empty(); }
+        void setSilent(bool s) { m_silent = s; }
 };

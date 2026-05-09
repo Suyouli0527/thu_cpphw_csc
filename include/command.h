@@ -149,9 +149,11 @@ public:
         subCommands.push_back(line.substr(pos + 1));
         }
         file.close();
+        System.setSilent(true);
         for (const auto &cmd : subCommands) {
             execute(cmd);
         }
+        System.setSilent(false);
         Tools::printSuccess();
 }
 
