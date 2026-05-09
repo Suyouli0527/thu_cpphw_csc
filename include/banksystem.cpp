@@ -232,6 +232,10 @@ void BankSystem::showDate() const{
 void BankSystem::addDays(int days){
     if(currentDate.addDays(days)) {
         updateAllAccountsInterest(currentDate);
+        Tools::printSuccess();
+    }
+    else {
+        Tools::printFailure();
     }
 }
 

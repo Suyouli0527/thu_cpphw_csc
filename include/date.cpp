@@ -81,11 +81,9 @@ if(n>0){
     }
 }
      cast();
-    Tools::printSuccess();
     return true;}
      
 else{
-    Tools::printFailure();
     return false;}
 }
 
