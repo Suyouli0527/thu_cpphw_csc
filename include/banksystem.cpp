@@ -421,10 +421,84 @@ void BankSystem::rollback(int n){
         Tools::printSuccess();
         return;
     }
-    else {
-        logRecords.erase(logRecords.end()-n,logRecords.end());
-        Tools::printSuccess();
+
+    int keepCount = logRecords.size() - n;
+    std::vector<std::string> cmdsToReplay(logRecords.begin(), logRecords.begin() + keepCount);
+
+    clearAccounts();
+    users.clear();
+    users.emplace_back("admin", UserType::admin);
+    users.emplace_back("default", UserType::normal);
+    currentDate = Date(1970, 1, 1);
+    currentUserName = "default";
+    logRecords.clear();
+
+    for (const auto& cmd : cmdsToReplay) {
+        std::istringstream iss(cmd);
+        std::string action;
+        iss >> action;
+
+        if (action == "OPEN") {
+            int id; char type; std::string name; double balance;
+            iss >> id >> type >> name >> balance;
+            openAccount(id, type, name, balance);
+        }
+        else if (action == "CLOSE") {
+            int id; iss >> id;
+            closeAccount(id);
+        }
+        else if (action == "MODIFY_NAME") {
+            int id; std::string name;
+            iss >> id >> name;
+            modifyName(id, name);
+        }
+        else if (action == "MODIFY_CREDIT") {
+            int id; double credit;
+            iss >> id >> credit;
+            modifyCredit(id, credit);
+        }
+        else if (action == "DEPOSIT") {
+            int id; double amount;
+            iss >> id >> amount;
+            deposit(id, amount);
+        }
+        else if (action == "WITHDRAW") {
+            int id; double amount;
+            iss >> id >> amount;
+            withdraw(id, amount);
+        }
+        else if (action == "TRANSFER") {
+            int srcId, dstId; double amount;
+            iss >> srcId >> dstId >> amount;
+            transfer(srcId, dstId, amount);
+        }
+        else if (action == "SWITCH") {
+            std::string username;
+            iss >> username;
+            switchUser(username);
+        }
+        else if (action == "CREATE_USER") {
+            std::string username;
+            iss >> username;
+            createUser(username);
+        }
+        else if (action == "DELETE_USER") {
+            std::string username;
+            iss >> username;
+            deleteUser(username);
+        }
+        else if (action == "ADD_DAYS") {
+            int days; iss >> days;
+            addDays(days);
+        }
+        else if (action == "SET_DATE") {
+            int year, month, day;
+            iss >> year >> month >> day;
+            setDate(year, month, day);
+        }
     }
+
+    Tools::printSuccess();
 }
 
 void BankSystem::SaveLog(const std::string &filename) const{
