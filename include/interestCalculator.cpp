@@ -5,10 +5,10 @@ const double InterestCalculator::debtRate = 0.0005;
 double  InterestCalculator::calcDailyInterest(char type,double balance,const Date &date){
     double dailyRate;
     switch(type){
-        case 's':
+        case 'S':
             dailyRate = savingRate/date.daysInYear();
             break;
-        case 'c':
+        case 'C':
             if(balance>=0){
                 dailyRate = creditRate/date.daysInYear();
             }

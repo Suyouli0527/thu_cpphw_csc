@@ -89,7 +89,7 @@ else{
 
 void Date::cast(){
     month_name=monthName[month];
-    weekday=weekName[(4+totalDays)%7];
+    weekday=weekName[totalDays%7];
 }
 
 bool Date::showDate()const {

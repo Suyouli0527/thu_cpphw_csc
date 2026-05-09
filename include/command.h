@@ -26,16 +26,22 @@ public:
             int id;
             iss >> id;
             System.closeAccount(id);
-        } else if (cmd == "MODIFYNAME") {
-            int id;
-            std::string username;
-            iss >> id >> username;
-            System.modifyName(id, username);
-        } else if (cmd == "MODIFYCREDIT") {
-            int id;
-            double newCredit;
-            iss >> id >> newCredit;
-            System.modifyCredit(id, newCredit);
+        } else if (cmd == "MODIFY") {
+            std::string subCmd;
+            iss >> subCmd;
+            if (subCmd == "NAME") {
+                int id;
+                std::string newName;
+                iss >> id >> newName;
+                System.modifyName(id, newName);
+            } else if (subCmd == "CREDIT") {
+                int id;
+                double newCredit;
+                iss >> id >> newCredit;
+                System.modifyCredit(id, newCredit);
+            } else {
+                Tools::printFailure();
+            }
         } else if (cmd == "QUERY") {
             int id;
             iss >> id;

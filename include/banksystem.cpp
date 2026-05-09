@@ -117,7 +117,7 @@ void BankSystem::modifyCredit(int id,double newCredit){
         Tools::printFailure();
         return;
     }
-    else if(acc->getType()!='c') {
+    else if(acc->getType()!='C') {
         Tools::printFailure();
         return;
     }
@@ -142,7 +142,7 @@ void BankSystem::query(int id) const{
         <<acc->getType()<<" "
         <<acc->getName()<<" "
         <<acc->getBalance();
-    if(acc->getType()=='c') {
+    if(acc->getType()=='C') {
         const CreditAccount* creditAcc=static_cast<const CreditAccount*>(acc);
         std::cout<<" "<<creditAcc->getCredit();
         }
@@ -163,7 +163,7 @@ void BankSystem::queryAllAccounts() const{
     
     std::vector<int> sortedAccounts = accountIDs;
     std::sort(sortedAccounts.begin(), sortedAccounts.end());
-    for (int id : accountIDs) {
+    for (int id : sortedAccounts) {
         query(id);
     }
 }
@@ -342,7 +342,7 @@ void BankSystem::queryAllUser() const{
         std::vector<User> sortedUsers = users;
         std::sort(sortedUsers.begin(), sortedUsers.end());
         for(auto user:sortedUsers) {
-            std::cout<<user.getUserName()<<" "<<user.getAccountCount()<<std::endl;
+            std::cout<<"USER "<<user.getUserName()<<" "<<user.getAccountCount()<<std::endl;
         }
     }
 }

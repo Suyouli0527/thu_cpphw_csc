@@ -36,7 +36,7 @@ void Account::updateInterest(const Date& targetDate) {
 
 
 SavingAccount::SavingAccount(int id,char type,const std::string &name,double balance,const Date &openDate):
-    Account(id,'s',name,balance,openDate){};
+    Account(id,'S',name,balance,openDate){};
 
 
 bool SavingAccount::deposit(const Date &date,double amount){
@@ -57,7 +57,7 @@ bool SavingAccount::withdraw(const Date &date,double amount){
 
 
 CreditAccount::CreditAccount(int id,char type,const std::string &name,double creditAmount,const Date &openDate):
-    Account(id,'c',name,0,openDate),credit(creditAmount){};
+    Account(id,'C',name,0,openDate),credit(creditAmount){};
 
 bool CreditAccount::deposit(const Date &date,double amount){
     if(amount <0) {

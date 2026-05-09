@@ -25,7 +25,7 @@ class Date{
         int year=1970;
         int month=1;
         int day=1;
-        int totalDays=0;
+        int totalDays=719528;
         std::string month_name=monthName[1];
         std::string weekday=weekName[4];
         const static std::string weekName[7];
