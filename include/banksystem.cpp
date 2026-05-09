@@ -74,6 +74,7 @@ void BankSystem::openAccount(int id,char type,std::string accountName,double bal
         accounts.push_back(newAccount);
         currentUser->addAccountID(id);
         Tools::printSuccess();
+        logRecords.push_back("OPEN "+std::to_string(id)+" "+type+" "+accountName+" "+std::to_string(balance));
     }
 }
 
@@ -91,6 +92,7 @@ void BankSystem::closeAccount(int id){
     else {
         removeAccount(id);
         Tools::printSuccess();
+        logRecords.push_back("CLOSE "+std::to_string(id));
     }
 }
 
@@ -107,6 +109,7 @@ void BankSystem::modifyName(int id,const std::string &username){
     else {
         acc->modifyName(username);
         Tools::printSuccess();
+        logRecords.push_back("MODIFY_NAME "+std::to_string(id)+" "+username);
     }
 }
 
@@ -129,6 +132,7 @@ void BankSystem::modifyCredit(int id,double newCredit){
         CreditAccount* creditAcc=static_cast<CreditAccount*>(acc);
         creditAcc->modifyCredit(newCredit);
         Tools::printSuccess();
+        logRecords.push_back("MODIFY_CREDIT "+std::to_string(id)+" "+std::to_string(newCredit));
     }
 }
 
@@ -175,6 +179,7 @@ void BankSystem::deposit(int id, double amount) {
     }
     if (acc->deposit(currentDate, amount)) {
         Tools::printSuccess();
+        logRecords.push_back("DEPOSIT "+std::to_string(id)+" "+std::to_string(amount));
     }
     else {
         Tools::printFailure();
@@ -190,6 +195,7 @@ void BankSystem::withdraw(int id, double amount){
     }
     if (acc->withdraw(currentDate, amount)) {
         Tools::printSuccess();
+        logRecords.push_back("WITHDRAW "+std::to_string(id)+" "+std::to_string(amount));
     }
     else {
         Tools::printFailure();
@@ -222,7 +228,7 @@ void BankSystem::transfer(int srcId, int dstId, double amount){
     }
     dstAcc->deposit(currentDate, amount);
     Tools::printSuccess();
-    
+    logRecords.push_back("TRANSFER "+std::to_string(srcId)+" "+std::to_string(dstId)+" "+std::to_string(amount));
 }
 
 void BankSystem::showDate() const{
@@ -233,6 +239,7 @@ void BankSystem::addDays(int days){
     if(currentDate.addDays(days)) {
         updateAllAccountsInterest(currentDate);
         Tools::printSuccess();
+        logRecords.push_back("ADD_DAYS "+std::to_string(days));
     }
     else {
         Tools::printFailure();
@@ -242,6 +249,7 @@ void BankSystem::addDays(int days){
 void BankSystem::setDate(int year, int month, int day){
     if(currentDate.setDays(year,month,day)) {
         updateAllAccountsInterest(currentDate);
+        logRecords.push_back("SET_DATE "+std::to_string(year)+" "+std::to_string(month)+" "+std::to_string(day));
     }
 }
 
@@ -269,38 +277,42 @@ void BankSystem::createUser(const std::string &username){
     }
 
 
-
-
     else {
     users.emplace_back(username,UserType::normal);
     Tools::printSuccess();
+    logRecords.push_back("CREATE_USER "+username);
 }
 }
 void BankSystem::deleteUser(const std::string &username){
+    if(!isAdmin()) {
+        Tools::printFailure();
+        return;
+    }
     if(username=="admin") {
         Tools::printFailure();
         return;
     }
-    else if(findUser(username)==nullptr) {
+    if(findUser(username)==nullptr) {
         Tools::printFailure();
         return;
     }
-    else if(!isAdmin()) {
+    
+    if(findUser(username)->getAccountIDs().size()>0) {
         Tools::printFailure();
         return;
     }
-    else if(findUser(username)->getAccountIDs().size()>0) {
-        Tools::printFailure();
-        return;
+    else {
+        for (int i = users.size() - 1; i >= 0; i--) {
+            if (users[i].getUserName() == username) {
+                users.erase(users.begin() + i);
+                Tools::printSuccess();
+                logRecords.push_back("DELETE_USER "+username);
+                return;
+            }
+        }
     }
+}
 
-    for (int i = users.size() - 1; i >= 0; i--) {
-    if (users[i].getUserName() == username) {
-        users.erase(users.begin() + i);
-    }
-}
-    Tools::printSuccess();
-}
 
 void BankSystem::queryUser(const std::string &username) const{
     if(!isAdmin()) {
@@ -359,6 +371,7 @@ void BankSystem::switchUser(const std::string &username){
     else {
         currentUser=user;
         Tools::printSuccess();
+        logRecords.push_back("SWITCH "+username);
     }
 }
 
@@ -378,6 +391,31 @@ bool BankSystem::islegalName(const std::string &name) const{
         if(!((c>='a' && c<='z') || (c>='A' && c<='Z') || (c>='0' && c<='9'))) return false;
     }
     return true;
+}
+
+void BankSystem::showLog() const{
+    if(logRecords.empty()) {
+        Tools::printFailure();
+        return;
+    }
+
+    else {
+        for(int i=0;i<logRecords.size();i++) {
+            std::cout<<i+1<<" "<<logRecords[i]<<std::endl;
+        }
+    }
+    
+}
+
+void BankSystem::rollback(int n){
+    if(n<=0||n>logRecords.size()) {
+        Tools::printFailure();
+        return;
+    }
+    else {
+        logRecords.erase(logRecords.end()-n,logRecords.end());
+        Tools::printSuccess();
+    }
 }
 
 BankSystem::~BankSystem(){

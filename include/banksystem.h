@@ -12,6 +12,7 @@ class BankSystem {
         User  *currentUser;
         std::vector<User> users;
         std::vector<Account*> accounts;
+        std::vector<std::string> logRecords;
         
         Account* findAccount(int id) const;
         User* findUser(const std::string &name) const;
@@ -50,6 +51,9 @@ class BankSystem {
 
         void switchUser(const std::string &username);
         void whoami() const;
+        
+        void showLog() const;
+        void rollback(int n);
         
         bool isLoggedIn() const { return currentUser != nullptr; }
         bool isAdmin() const { return isLoggedIn() && currentUser->isAdmin(); }
