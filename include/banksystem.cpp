@@ -1,5 +1,5 @@
 #include "banksystem.h"
-
+#include <iomanip>
 User* BankSystem::findUser(const std::string& name) const{
     for (const auto &user : users) {
         if (user.getUserName() == name) {
@@ -141,10 +141,10 @@ void BankSystem::query(int id) const{
     std::cout<<acc->getId()<<" "
         <<acc->getType()<<" "
         <<acc->getName()<<" "
-        <<acc->getBalance();
+        <<std::fixed<<std::setprecision(2)<<acc->getBalance();
     if(acc->getType()=='C') {
         const CreditAccount* creditAcc=static_cast<const CreditAccount*>(acc);
-        std::cout<<" "<<creditAcc->getCredit();
+        std::cout<<" "<<std::fixed<<std::setprecision(2)<<creditAcc->getCredit();
         }
     std::cout<<std::endl;
     }
@@ -251,10 +251,17 @@ void BankSystem::createUser(const std::string &username){
         Tools::printFailure();
         return;
     }
+
+    if(!islegalName(username)) {
+        Tools::printFailure();
+        return;
+    }
+
     if(username=="admin") {
         Tools::printFailure();
         return;
     }
+
 
     if(findUser(username)) {
         Tools::printFailure();
@@ -262,10 +269,6 @@ void BankSystem::createUser(const std::string &username){
     }
 
 
-    if(username.empty()) {
-        Tools::printFailure();
-        return;
-    }
 
 
     else {
@@ -369,6 +372,13 @@ void BankSystem::whoami() const{
     }
 }
 
+bool BankSystem::islegalName(const std::string &name) const{
+    if(name.empty()) return false;
+    for(char c:name) {
+        if(!((c>='a' && c<='z') || (c>='A' && c<='Z') || (c>='0' && c<='9'))) return false;
+    }
+    return true;
+}
 
 BankSystem::~BankSystem(){
     clearAccounts();

@@ -55,8 +55,8 @@ bool Date::setDays(int y,int m,int d){
         year=y;
         month=m;
         day=d;  
-        cast();
         totalDays=newTotal;
+        cast();
         Tools::printSuccess();
         return true;
 };

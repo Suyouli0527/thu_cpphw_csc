@@ -53,4 +53,5 @@ class BankSystem {
         
         bool isLoggedIn() const { return currentUser != nullptr; }
         bool isAdmin() const { return isLoggedIn() && currentUser->isAdmin(); }
+        bool islegalName(const std::string &name) const;
 };
