@@ -50,11 +50,11 @@ void BankSystem::clearAccounts() {
 }
 
 void BankSystem::printSuccess() const{
-    if(!m_silent) printSuccess();
+    if(!m_silent) Tools::printSuccess();
 }
 
 void BankSystem::printFailure() const{
-    if(!m_silent) printFailure();
+    if(!m_silent) Tools::printFailure();
 }
 
 void BankSystem::openAccount(int id,char type,std::string accountName,double balance){
@@ -517,6 +517,7 @@ void BankSystem::SaveLog(const std::string &filename) const{
         file << (i + 1) << " " << logRecords[i] << std::endl;
     }
     printSuccess();
+
 }
 
 
