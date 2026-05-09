@@ -1,9 +1,9 @@
 #pragma once
 #include <string>
-#include "Tools.h"
+#include "tools.h"
 class Date{
     public:
-        Date()=default;
+        Date();
         Date(int year,int month,int day);
         int getYear()const {return year;};
         std::string getMonth() const {return month_name;};
@@ -25,7 +25,7 @@ class Date{
         int year=1970;
         int month=1;
         int day=1;
-        int totalDays=719528;
+        int totalDays=719163;
         std::string month_name=monthName[1];
         std::string weekday=weekName[4];
         const static std::string weekName[7];

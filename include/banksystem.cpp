@@ -77,6 +77,7 @@ void BankSystem::openAccount(int id,char type,std::string accountName,double bal
     else {
         Account* newAccount;
         Date openDate=currentDate;
+        type = std::toupper(type);
         if(type=='S'||type=='s') newAccount=new SavingAccount(id,type,accountName,balance,openDate);
         else newAccount=new CreditAccount(id,type,accountName,balance,openDate);
         accounts.push_back(newAccount);
@@ -421,10 +422,7 @@ void BankSystem::rollback(int n){
         printFailure();
         return;
     }
-    if(n==0) {
-        printSuccess();
-        return;
-    }
+    if(n==0) n = logRecords.size();
 
     int keepCount = logRecords.size() - n;
     std::vector<std::string> cmdsToReplay(logRecords.begin(), logRecords.begin() + keepCount);

@@ -33,6 +33,11 @@ int Date::daysInYear()const {
     return isleapYear(year)?366:365;
 }
 
+Date::Date() : year(1970), month(1), day(1) {
+    int y = 1969;
+    totalDays = y*365 + y/4 - y/100 + y/400 + 1; 
+    cast();
+}
 Date::Date(int y, int m, int d) {
     if(!isLegalDate(y,m,d)) throw std::invalid_argument("Invalid date");
     year = y;
