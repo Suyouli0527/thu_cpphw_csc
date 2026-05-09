@@ -74,7 +74,7 @@ void BankSystem::openAccount(int id,char type,std::string accountName,double bal
         accounts.push_back(newAccount);
         findUser(currentUserName)->addAccountID(id);
         Tools::printSuccess();
-        logRecords.push_back("OPEN "+std::to_string(id)+" "+type+" "+accountName+" "+std::to_string(balance));
+        logRecords.push_back("OPEN "+std::to_string(id)+" "+type+" "+accountName+" "+Tools::formatAmount(balance));
     }
 }
 
@@ -132,7 +132,7 @@ void BankSystem::modifyCredit(int id,double newCredit){
         CreditAccount* creditAcc=static_cast<CreditAccount*>(acc);
         creditAcc->modifyCredit(newCredit);
         Tools::printSuccess();
-        logRecords.push_back("MODIFY_CREDIT "+std::to_string(id)+" "+std::to_string(newCredit));
+        logRecords.push_back("MODIFY_CREDIT "+std::to_string(id)+" "+Tools::formatAmount(newCredit));
     }
 }
 
@@ -145,10 +145,10 @@ void BankSystem::query(int id) const{
     std::cout<<acc->getId()<<" "
         <<acc->getType()<<" "
         <<acc->getName()<<" "
-        <<std::fixed<<std::setprecision(2)<<acc->getBalance();
+        <<Tools::formatAmount(acc->getBalance());
     if(acc->getType()=='C') {
         const CreditAccount* creditAcc=static_cast<const CreditAccount*>(acc);
-        std::cout<<" "<<std::fixed<<std::setprecision(2)<<creditAcc->getCredit();
+        std::cout<<" "<<Tools::formatAmount(creditAcc->getCredit());
         }
     std::cout<<std::endl;
     }
@@ -179,7 +179,7 @@ void BankSystem::deposit(int id, double amount) {
     }
     if (acc->deposit(currentDate, amount)) {
         Tools::printSuccess();
-        logRecords.push_back("DEPOSIT "+std::to_string(id)+" "+std::to_string(amount));
+        logRecords.push_back("DEPOSIT "+std::to_string(id)+" "+Tools::formatAmount(amount));
     }
     else {
         Tools::printFailure();
@@ -195,7 +195,7 @@ void BankSystem::withdraw(int id, double amount){
     }
     if (acc->withdraw(currentDate, amount)) {
         Tools::printSuccess();
-        logRecords.push_back("WITHDRAW "+std::to_string(id)+" "+std::to_string(amount));
+        logRecords.push_back("WITHDRAW "+std::to_string(id)+" "+Tools::formatAmount(amount));
     }
     else {
         Tools::printFailure();
@@ -228,7 +228,7 @@ void BankSystem::transfer(int srcId, int dstId, double amount){
     }
     dstAcc->deposit(currentDate, amount);
     Tools::printSuccess();
-    logRecords.push_back("TRANSFER "+std::to_string(srcId)+" "+std::to_string(dstId)+" "+std::to_string(amount));
+    logRecords.push_back("TRANSFER "+std::to_string(srcId)+" "+std::to_string(dstId)+" "+Tools::formatAmount(amount));
 }
 
 void BankSystem::showDate() const{

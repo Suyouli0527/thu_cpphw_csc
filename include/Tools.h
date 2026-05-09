@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
-
+#include <iomanip>
+#include <sstream>
 
 class Tools {
 public:
@@ -9,5 +10,10 @@ public:
     }
     static void printFailure(){
         std::cout<<'0'<<std::endl;
+    }
+    static std::string formatAmount(double amount){
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(2) << amount;
+        return oss.str();
     }
 };
