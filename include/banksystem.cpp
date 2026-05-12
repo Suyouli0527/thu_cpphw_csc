@@ -2,7 +2,7 @@
 #include <iomanip>
 #include <fstream>
 User* BankSystem::findUser(const std::string& name) const{
-    for (const auto &user : users) {
+    for (const auto &user : static_cast<const std::vector<User>&>(users)) {
         if (user.getUserName() == name) {
             return const_cast<User*>(&user);
         }
@@ -83,7 +83,7 @@ void BankSystem::openAccount(int id,char type,std::string accountName,double bal
         accounts.push_back(newAccount);
         findUser(currentUserName)->addAccountID(id);
         printSuccess();
-        logRecords.push_back("OPEN "+std::to_string(id)+" "+type+" "+accountName+" "+Tools::formatAmount(balance));
+        logRecords.push_back("OPEN "+std::to_string(id)+" "+std::string(1, type)+" "+accountName+" "+Tools::formatAmount(balance));
     }
 }
 
@@ -118,7 +118,7 @@ void BankSystem::modifyName(int id,const std::string &username){
     else {
         acc->modifyName(username);
         printSuccess();
-        logRecords.push_back("MODIFY_NAME "+std::to_string(id)+" "+username);
+        logRecords.push_back("MODIFY NAME "+std::to_string(id)+" "+username);
     }
 }
 
@@ -141,13 +141,13 @@ void BankSystem::modifyCredit(int id,double newCredit){
         CreditAccount* creditAcc=static_cast<CreditAccount*>(acc);
         creditAcc->modifyCredit(newCredit);
         printSuccess();
-        logRecords.push_back("MODIFY_CREDIT "+std::to_string(id)+" "+Tools::formatAmount(newCredit));
+        logRecords.push_back("MODIFY CREDIT "+std::to_string(id)+" "+Tools::formatAmount(newCredit));
     }
 }
 
 void BankSystem::query(int id) const{
     Account* acc=findAccount(id);
-    if(acc==nullptr || !ownsAccount(id)) {
+    if(acc==nullptr || !ownsAccount(id)&&!isAdmin()) {
         printFailure();
         return;
     }
@@ -240,7 +240,7 @@ void BankSystem::addDays(int days){
     if(currentDate.addDays(days)) {
         updateAllAccountsInterest(currentDate);
         printSuccess();
-        logRecords.push_back("ADD_DAYS "+std::to_string(days));
+        logRecords.push_back("ADD_DAY "+std::to_string(days));
     }
     else {
         printFailure();
@@ -442,6 +442,9 @@ void BankSystem::rollback(int n){
 
     int keepCount = n;
     std::vector<std::string> cmdsToReplay(logRecords.begin(), logRecords.begin() + keepCount);
+    if (n > 0) {
+        cmdsToReplay = std::vector<std::string>(logRecords.begin(), logRecords.begin() + keepCount);
+    }
 
     clearAccounts();
     users.clear();
@@ -466,16 +469,20 @@ void BankSystem::rollback(int n){
             int id; iss >> id;
             closeAccount(id);
         }
-        else if (action == "MODIFY_NAME") {
-            int id; std::string name;
-            iss >> id >> name;
-            modifyName(id, name);
-        }
-        else if (action == "MODIFY_CREDIT") {
-            int id; double credit;
-            iss >> id >> credit;
-            modifyCredit(id, credit);
-        }
+        else if (action == "MODIFY") {
+        std::string subAction;
+        iss >> subAction;
+        if (subAction == "NAME") {
+        int id; std::string name;
+        iss >> id >> name;
+        modifyName(id, name);
+    }
+        else if (subAction == "CREDIT") {
+        int id; double credit;
+        iss >> id >> credit;
+        modifyCredit(id, credit);
+    }
+}
         else if (action == "DEPOSIT") {
             int id; double amount;
             iss >> id >> amount;
@@ -506,9 +513,13 @@ void BankSystem::rollback(int n){
             iss >> username;
             deleteUser(username);
         }
-        else if (action == "ADD_DAYS") {
-            int days; iss >> days;
-            addDays(days);
+        else if (action == "ADD_DAY") {
+            double days; iss >> days;
+            if (days == static_cast<int>(days)) {
+                addDays(static_cast<int>(days));
+            } else {
+                Tools::printFailure();
+            }
         }
         else if (action == "SET_DATE") {
             int year, month, day;

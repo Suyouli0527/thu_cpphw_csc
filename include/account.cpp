@@ -17,20 +17,19 @@ void Account::settleMonthlyInterest() {
 }
 
 void Account::updateInterest(const Date& targetDate) {
-    Date d = lastInterestDate;
-    d.addDays(1);                     
-    while (d - targetDate <= 0) {      
-        double daily = InterestCalculator::calcDailyInterest(type, balance, d);
+    Date current = lastInterestDate;
+    
+    while (current - targetDate < 0) {
+        double daily = InterestCalculator::calcDailyInterest(type, balance, current);
         interest += daily;
-
-        Date nextDay = d;
-        nextDay.addDays(1);
-        if (nextDay.getDay() == 1) {
-            settleMonthlyInterest();  
+        
+        current.addDays(1);
+        
+        if (current.getDay() == 1) {
+            settleMonthlyInterest();
         }
-
-        d = nextDay;
     }
+    
     lastInterestDate = targetDate;
 }
 

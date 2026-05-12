@@ -76,9 +76,14 @@ public:
             System.showDate();
         } 
         else if (cmd == "ADD_DAY") {
-            int days;
+            double days;
             iss >> days;
-            System.addDays(days);
+            if(days ==static_cast<int>(days)  ){
+                System.addDays(static_cast<int>(days));
+            } 
+            else {
+                Tools::printFailure();
+            }
         } 
         else if (cmd == "SET_DATE") {
             int year, month, day;
