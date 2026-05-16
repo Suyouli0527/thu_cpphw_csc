@@ -146,6 +146,7 @@ public:
             std::vector<std::string> subCommands;
             std::string line;
             while (std::getline(file, line)) {
+            if (line.empty()) continue;
             auto pos = line.find(' ');
             if (pos == std::string::npos) {
             Tools::printFailure();
