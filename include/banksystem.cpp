@@ -2,7 +2,7 @@
 #include <iomanip>
 #include <fstream>
 User* BankSystem::findUser(const std::string& name) const{
-    for (const auto &user : static_cast<const std::vector<User>&>(users)) {
+    for (const auto &user : users) {
         if (user.getUserName() == name) {
             return const_cast<User*>(&user);
         }
@@ -62,6 +62,10 @@ void BankSystem::openAccount(int id,char type,std::string accountName,double bal
         printFailure();
         return;
     }
+    if(id<=0) {
+        printFailure();
+        return;
+    }
     else if(type!='S'&&type!='C'&&type!='s'&&type!='c') {
         printFailure();
         return;
@@ -78,7 +82,7 @@ void BankSystem::openAccount(int id,char type,std::string accountName,double bal
         Account* newAccount;
         Date openDate=currentDate;
         type = std::toupper(type);
-        if(type=='S'||type=='s') newAccount=new SavingAccount(id,type,accountName,balance,openDate);
+        if(type=='S') newAccount=new SavingAccount(id,type,accountName,balance,openDate);
         else newAccount=new CreditAccount(id,type,accountName,balance,openDate);
         accounts.push_back(newAccount);
         findUser(currentUserName)->addAccountID(id);
@@ -147,7 +151,7 @@ void BankSystem::modifyCredit(int id,double newCredit){
 
 void BankSystem::query(int id) const{
     Account* acc=findAccount(id);
-    if(acc==nullptr || !ownsAccount(id)&&!isAdmin()) {
+    if(acc==nullptr || !ownsAccount(id)) {
         printFailure();
         return;
     }
@@ -440,11 +444,7 @@ void BankSystem::rollback(int n){
         return;
     }
 
-    int keepCount = n;
-    std::vector<std::string> cmdsToReplay(logRecords.begin(), logRecords.begin() + keepCount);
-    if (n > 0) {
-        cmdsToReplay = std::vector<std::string>(logRecords.begin(), logRecords.begin() + keepCount);
-    }
+    std::vector<std::string> cmdsToReplay(logRecords.begin(), logRecords.begin() + n);
 
     clearAccounts();
     users.clear();
@@ -518,7 +518,7 @@ void BankSystem::rollback(int n){
             if (days == static_cast<int>(days)) {
                 addDays(static_cast<int>(days));
             } else {
-                Tools::printFailure();
+                printFailure();
             }
         }
         else if (action == "SET_DATE") {
