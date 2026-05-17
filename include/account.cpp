@@ -3,7 +3,7 @@
 #include <string>
 
 Account::Account(int id,char type,const std::string &name,double balance,const Date &openDate)
-:id(id),type(type),name(name),balance(balance),openDate(openDate),interest(0.0),lastInterestDate(openDate){};
+:id(id),name(name),type(type),balance(balance),openDate(openDate),lastInterestDate(openDate),interest(0.0){};
 
 bool Account::modifyName(const std::string &newName){
         name=newName;

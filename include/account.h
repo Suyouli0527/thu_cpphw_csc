@@ -15,7 +15,8 @@ class Account{
     public:
         Account(int id,char type,const std::string &name,double balance,const Date &openDate);
         void updateInterest(const Date &targetDate);
-        void settleMonthlyInterest();
+        virtual void settleMonthlyInterest();
+        virtual ~Account() = default;
         
         virtual bool deposit(const Date &date,double amount)=0;
         virtual bool withdraw(const Date &date,double amount)=0;
@@ -47,6 +48,6 @@ class CreditAccount:public Account{
         bool deposit(const Date &date,double amount);
         bool withdraw(const Date &date,double amount);
         bool modifyCredit(double newCredit);
-        void settleMonthlyInterest();
+        void settleMonthlyInterest() override;
         
 };

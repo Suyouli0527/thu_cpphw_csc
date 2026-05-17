@@ -46,7 +46,7 @@ Date::Date(int y, int m, int d) {
     int years = y - 1;
     totalDays = years * 365 + years / 4 - years / 100 + years / 400
                 + days_before_month[m-1] + d;
-    if ((y % 4 == 0 && y % 100 != 0 || y % 400 == 0) && m > 2)
+    if (((y % 4 == 0 && y % 100 != 0) || y % 400 == 0) && m > 2)
         totalDays++;
     cast();
 };

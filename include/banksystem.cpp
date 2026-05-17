@@ -1,6 +1,8 @@
 #include "banksystem.h"
+#include <algorithm>
 #include <iomanip>
 #include <fstream>
+#include <sstream>
 User* BankSystem::findUser(const std::string& name) const{
     for (const auto &user : users) {
         if (user.getUserName() == name) {
@@ -98,7 +100,7 @@ void BankSystem::closeAccount(int id){
         printFailure();
         return;
     }
-    else if(acc->getBalance()!=0) {
+    else if(Tools::formatAmount(acc->getBalance()) != "0.00") {
         printFailure();
         return;
     }
