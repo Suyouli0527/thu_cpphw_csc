@@ -29,7 +29,8 @@ void BankSystem::updateAllAccountsInterest(const Date &newDate) {
 }
 
 void BankSystem::removeAccount(int id) {
-    findUser(currentUserName)->removeAccountID(id);
+    User* user = findUser(currentUserName);
+    if (user) user->removeAccountID(id);
     for (auto it = accounts.begin(); it != accounts.end(); ++it) {
         if ((*it)->getId() == id) {
             delete *it;
@@ -60,37 +61,36 @@ void BankSystem::printFailure() const{
 }
 
 void BankSystem::openAccount(int id,char type,std::string accountName,double balance){
-    if(findAccount(id)!=nullptr) {
-        printFailure();
-        return;
-    }
     if(id<=0) {
         printFailure();
         return;
     }
-    else if(type!='S'&&type!='C'&&type!='s'&&type!='c') {
+    if(findAccount(id)!=nullptr) {
         printFailure();
         return;
     }
-    else if(accountName.empty()) {
+    type = std::toupper(type);
+    if(type!='S'&&type!='C') {
         printFailure();
         return;
     }
-    else if(balance<0) {
+    if(accountName.empty()) {
         printFailure();
         return;
     }
-    else {
-        Account* newAccount;
-        Date openDate=currentDate;
-        type = std::toupper(type);
-        if(type=='S') newAccount=new SavingAccount(id,type,accountName,balance,openDate);
-        else newAccount=new CreditAccount(id,type,accountName,balance,openDate);
-        accounts.push_back(newAccount);
-        findUser(currentUserName)->addAccountID(id);
-        printSuccess();
-        logRecords.push_back("OPEN "+std::to_string(id)+" "+std::string(1, type)+" "+accountName+" "+Tools::formatAmount(balance));
+    if(balance<0) {
+        printFailure();
+        return;
     }
+    Account* newAccount;
+    Date openDate=currentDate;
+    if(type=='S') newAccount=new SavingAccount(id,type,accountName,balance,openDate);
+    else newAccount=new CreditAccount(id,type,accountName,balance,openDate);
+    accounts.push_back(newAccount);
+    User* user = findUser(currentUserName);
+    if (user) user->addAccountID(id);
+    printSuccess();
+    logRecords.push_back("OPEN "+std::to_string(id)+" "+std::string(1, type)+" "+accountName+" "+Tools::formatAmount(balance));
 }
 
 
@@ -100,7 +100,7 @@ void BankSystem::closeAccount(int id){
         printFailure();
         return;
     }
-    else if(Tools::formatAmount(acc->getBalance()) != "0.00") {
+    else if(acc->getBalance() != 0) {
         printFailure();
         return;
     }
@@ -161,21 +161,19 @@ void BankSystem::query(int id) const{
 }
 
 void BankSystem::queryAllAccounts() const{
-    if(currentUserName.empty()) {
+    User* user = findUser(currentUserName);
+    if(!user) {
         printFailure();
         return;
     }
-    const auto& accountIDs = findUser(currentUserName)->getAccountIDs();
+    std::vector<int> accountIDs = user->getAccountIDs();
     if(accountIDs.empty()) {
         printFailure();
         return;
     }
-
-    
-    std::vector<int> sortedAccounts = accountIDs;
-    std::sort(sortedAccounts.begin(), sortedAccounts.end());
-    for (int id : sortedAccounts) {
-        query(id);
+    std::sort(accountIDs.begin(), accountIDs.end());
+    for (int id : accountIDs) {
+        printAccountInfo(id);
     }
 }
 void BankSystem::deposit(int id, double amount) {
@@ -254,7 +252,7 @@ void BankSystem::addDays(int days){
 }
 
 void BankSystem::setDate(int year, int month, int day){
-    if(currentDate.setDays(year,month,day)) {
+    if(currentDate.setDate(year,month,day)) {
         updateAllAccountsInterest(currentDate);
         printSuccess();
         logRecords.push_back("SET_DATE "+std::to_string(year)+" "+std::to_string(month)+" "+std::to_string(day));
@@ -300,6 +298,10 @@ void BankSystem::deleteUser(const std::string &username){
         return;
     }
     if(username=="admin") {
+        printFailure();
+        return;
+    }
+    if(username==currentUserName) {
         printFailure();
         return;
     }
@@ -406,7 +408,9 @@ bool BankSystem::islegalName(const std::string &name) const{
 }
 
 bool BankSystem::ownsAccount(int id) const{
-    const auto& myIDs = findUser(currentUserName)->getAccountIDs();
+    User* user = findUser(currentUserName);
+    if (!user) return false;
+    const auto& myIDs = user->getAccountIDs();
     for (int aid : myIDs) {
         if (aid == id) return true;
     }
@@ -415,6 +419,7 @@ bool BankSystem::ownsAccount(int id) const{
 
 void BankSystem::printAccountInfo(int id) const{
     Account* acc = findAccount(id);
+    if (!acc) return;
     std::cout<<acc->getId()<<" "
         <<acc->getType()<<" "
         <<acc->getName()<<" "
@@ -516,17 +521,94 @@ void BankSystem::rollback(int n){
             deleteUser(username);
         }
         else if (action == "ADD_DAY") {
-            double days; iss >> days;
-            if (days == static_cast<int>(days)) {
-                addDays(static_cast<int>(days));
-            } else {
-                printFailure();
-            }
+            int days; iss >> days;
+            addDays(days);
         }
         else if (action == "SET_DATE") {
             int year, month, day;
             iss >> year >> month >> day;
             setDate(year, month, day);
+        }
+    }
+    m_silent = false;
+
+    printSuccess();
+}
+
+void BankSystem::resume(const std::string &filename) {
+    if (!logRecords.empty()) {
+        printFailure();
+        return;
+    }
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        printFailure();
+        return;
+    }
+    std::vector<std::string> subCommands;
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.empty()) continue;
+        size_t pos = line.find(' ');
+        if (pos == std::string::npos) {
+            printFailure();
+            return;
+        }
+        subCommands.push_back(line.substr(pos + 1));
+    }
+    file.close();
+
+    m_silent = true;
+    for (const auto &cmd : subCommands) {
+        std::istringstream iss(cmd);
+        std::string action;
+        iss >> action;
+
+        if (action == "OPEN") {
+            int id; char type; std::string name; double balance;
+            iss >> id >> type >> name >> balance;
+            openAccount(id, type, name, balance);
+        } else if (action == "CLOSE") {
+            int id; iss >> id;
+            closeAccount(id);
+        } else if (action == "MODIFY") {
+            std::string subAction; iss >> subAction;
+            if (subAction == "NAME") {
+                int id; std::string name;
+                iss >> id >> name;
+                modifyName(id, name);
+            } else if (subAction == "CREDIT") {
+                int id; double credit;
+                iss >> id >> credit;
+                modifyCredit(id, credit);
+            }
+        } else if (action == "DEPOSIT") {
+            int id; double amount;
+            iss >> id >> amount;
+            deposit(id, amount);
+        } else if (action == "WITHDRAW") {
+            int id; double amount;
+            iss >> id >> amount;
+            withdraw(id, amount);
+        } else if (action == "TRANSFER") {
+            int srcId, dstId; double amount;
+            iss >> srcId >> dstId >> amount;
+            transfer(srcId, dstId, amount);
+        } else if (action == "ADD_DAY") {
+            int days; iss >> days;
+            addDays(days);
+        } else if (action == "SET_DATE") {
+            int y, m, d; iss >> y >> m >> d;
+            setDate(y, m, d);
+        } else if (action == "SWITCH") {
+            std::string username; iss >> username;
+            switchUser(username);
+        } else if (action == "CREATE_USER") {
+            std::string username; iss >> username;
+            createUser(username);
+        } else if (action == "DELETE_USER") {
+            std::string username; iss >> username;
+            deleteUser(username);
         }
     }
     m_silent = false;
@@ -550,4 +632,123 @@ void BankSystem::SaveLog(const std::string &filename) const{
 
 BankSystem::~BankSystem(){
     clearAccounts();
+}
+
+void BankSystem::Command(const std::string &command) {
+    std::istringstream iss(command);
+    std::string cmd;
+    iss >> cmd;
+
+    if (cmd == "OPEN") {
+        int id; char type; std::string accountName; double balance;
+        if (!(iss >> id >> type >> accountName >> balance)) { printFailure(); return; }
+        openAccount(id, type, accountName, balance);
+    }
+    else if (cmd == "CLOSE") {
+        int id;
+        if (!(iss >> id)) { printFailure(); return; }
+        closeAccount(id);
+    }
+    else if (cmd == "MODIFY") {
+        std::string subCmd;
+        if (!(iss >> subCmd)) { printFailure(); return; }
+        if (subCmd == "NAME") {
+            int id; std::string newName;
+            if (!(iss >> id >> newName)) { printFailure(); return; }
+            modifyName(id, newName);
+        } else if (subCmd == "CREDIT") {
+            int id; double newCredit;
+            if (!(iss >> id >> newCredit)) { printFailure(); return; }
+            modifyCredit(id, newCredit);
+        } else {
+            printFailure();
+        }
+    }
+    else if (cmd == "QUERY") {
+        int id;
+        if (!(iss >> id)) { printFailure(); return; }
+        query(id);
+    }
+    else if (cmd == "QUERYALL") {
+        queryAllAccounts();
+    }
+    else if (cmd == "DEPOSIT") {
+        int id; double amount;
+        if (!(iss >> id >> amount)) { printFailure(); return; }
+        deposit(id, amount);
+    }
+    else if (cmd == "WITHDRAW") {
+        int id; double amount;
+        if (!(iss >> id >> amount)) { printFailure(); return; }
+        withdraw(id, amount);
+    }
+    else if (cmd == "TRANSFER") {
+        int srcId, dstId; double amount;
+        if (!(iss >> srcId >> dstId >> amount)) { printFailure(); return; }
+        transfer(srcId, dstId, amount);
+    }
+    else if (cmd == "SHOW_DATE") {
+        showDate();
+    }
+    else if (cmd == "ADD_DAY") {
+        double days;
+        if (!(iss >> days)) { printFailure(); return; }
+        if (days > 0 && days == static_cast<int>(days)) {
+            addDays(static_cast<int>(days));
+        } else {
+            printFailure();
+        }
+    }
+    else if (cmd == "SET_DATE") {
+        int year, month, day;
+        if (!(iss >> year >> month >> day)) { printFailure(); return; }
+        setDate(year, month, day);
+    }
+    else if (cmd == "CREATE_USER") {
+        std::string username;
+        if (!(iss >> username)) { printFailure(); return; }
+        createUser(username);
+    }
+    else if (cmd == "DELETE_USER") {
+        std::string username;
+        if (!(iss >> username)) { printFailure(); return; }
+        deleteUser(username);
+    }
+    else if (cmd == "QUERY_USER") {
+        std::string username;
+        if (!(iss >> username)) { printFailure(); return; }
+        queryUser(username);
+    }
+    else if (cmd == "QUERY_USERLIST") {
+        queryAllUser();
+    }
+    else if (cmd == "SWITCH") {
+        std::string username;
+        if (!(iss >> username)) { printFailure(); return; }
+        switchUser(username);
+    }
+    else if (cmd == "WHOAMI") {
+        whoami();
+    }
+    else if (cmd == "LOG") {
+        showLog();
+    }
+    else if (cmd == "ROLLBACK") {
+        int n;
+        if (!(iss >> n)) { printFailure(); return; }
+        rollback(n);
+    }
+    else if (cmd == "SAVE") {
+        std::string filename;
+        if (!(iss >> filename)) { printFailure(); return; }
+        SaveLog(filename);
+    }
+    else if (cmd == "RESUME") {
+        std::string filename;
+        if (!(iss >> filename)) { printFailure(); return; }
+        resume(filename);
+    }
+    else {
+        printFailure();
+    }
 }

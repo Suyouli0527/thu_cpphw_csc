@@ -61,6 +61,7 @@ class BankSystem {
         void rollback(int n);
 
         void SaveLog(const std::string &filename) const;
+        void resume(const std::string &filename);
         
         bool isLoggedIn() const { return !currentUserName.empty(); }
         bool isAdmin() const;

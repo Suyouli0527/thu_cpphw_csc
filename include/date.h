@@ -16,7 +16,7 @@ class Date{
         static bool isLegalDate(int y,int m,int d);
         bool showDate()const;
         bool addDays(int n);
-        bool setDays(int y,int m,int d);
+        bool setDate(int y,int m,int d);
         int operator-(const Date &date) const{
             return totalDays-date.totalDays;
         }

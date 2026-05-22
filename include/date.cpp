@@ -1,6 +1,7 @@
 #include "date.h"
 #include <string>
 #include <iostream>
+
 using namespace std;
 namespace {
     const int days_before_month[]={0,31,59,90,120,151,181,212,243,273,304,334,365};
@@ -39,7 +40,6 @@ Date::Date() : year(1970), month(1), day(1) {
     cast();
 }
 Date::Date(int y, int m, int d) {
-    if(!isLegalDate(y,m,d)) throw std::invalid_argument("Invalid date");
     year = y;
     month = m;
     day = d;
@@ -51,7 +51,7 @@ Date::Date(int y, int m, int d) {
     cast();
 };
 
-bool Date::setDays(int y,int m,int d){
+bool Date::setDate(int y,int m,int d){
     if(!isLegalDate(y,m,d)) return false;
     int years=y-1;
     int newTotal=years*365+years/4-years/100+years/400+days_before_month[m-1]+d;
