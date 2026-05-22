@@ -122,7 +122,7 @@ public:
         else if (cmd == "SAVE") {
             std::string filename;
             if (!(iss >> filename)) { Tools::printFailure(); return; }
-            system.SaveLog(filename);
+            system.saveLog(filename);
         }
         else if (cmd == "RESUME") {
             std::string filename;

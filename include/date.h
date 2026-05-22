@@ -1,33 +1,40 @@
 #pragma once
 #include <string>
-#include "tools.h"
-class Date{
-    public:
-        Date();
-        Date(int year,int month,int day);
-        int getYear()const {return year;};
-        std::string getMonth() const {return month_name;};
-        int getDay()const {return day;};
-        std::string getweekDay() const {return weekday;};
-        int getMaxDay()const;
-        static bool isleapYear(int y);
-        static int daysInMonth(int y, int m);
-        int daysInYear() const;
-        static bool isLegalDate(int y,int m,int d);
-        bool showDate()const;
-        bool addDays(int n);
-        bool setDate(int y,int m,int d);
-        int operator-(const Date &date) const{
-            return totalDays-date.totalDays;
-        }
-        void cast();
-    private:
-        int year=1970;
-        int month=1;
-        int day=1;
-        int totalDays=719163;
-        std::string month_name=monthName[1];
-        std::string weekday=weekName[4];
-        const static std::string weekName[7];
-        const static std::string monthName[13];
+
+class Date {
+public:
+    Date();
+    Date(int year, int month, int day);
+
+    int getYear() const { return year; }
+    int getMonth() const { return month; }
+    int getDay() const { return day; }
+    std::string getMonthName() const { return monthName[month]; }
+    std::string getWeekDay() const { return weekName[totalDays % 7]; }
+    int getMaxDay() const;
+    int daysInYear() const;
+
+    static bool isLeapYear(int y);
+    static int daysInMonth(int y, int m);
+    static bool isLegalDate(int y, int m, int d);
+
+    bool showDate() const;
+    bool addDays(int n);
+    bool setDate(int y, int m, int d);
+
+    int operator-(const Date &other) const {
+        return totalDays - other.totalDays;
+    }
+
+private:
+    int year;
+    int month;
+    int day;
+    int totalDays;
+
+    void updateFromTotal();
+
+    static const std::string weekName[7];
+    static const std::string monthName[13];
+    static const int daysBeforeMonth[13];
 };
