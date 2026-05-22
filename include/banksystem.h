@@ -30,9 +30,6 @@ class BankSystem {
         BankSystem(const BankSystem&) = delete;
         BankSystem& operator=(const BankSystem&) = delete;
 
-        void Command(const std::string &command);
-
-
         void openAccount(int id,char type,std::string accountName,double balance);
         void closeAccount(int id);
         void modifyName(int id,const std::string &username);

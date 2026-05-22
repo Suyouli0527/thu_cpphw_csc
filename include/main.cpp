@@ -1,13 +1,14 @@
-#include "banksystem.h"
+#include "command.h"
 #include <iostream>
 #include <string>
 
 int main() {
     BankSystem bank;
+    Command cmd(bank);
     std::string line;
     while (std::getline(std::cin, line)) {
         if (line.empty()) continue;
-        bank.Command(line);
+        cmd.execute(line);
     }
     return 0;
 }
