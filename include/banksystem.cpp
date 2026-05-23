@@ -108,7 +108,6 @@ void BankSystem::printAccountInfo(int id) const {
 void BankSystem::openAccount(int id, char type, const std::string &accountName, double balance) {
     if (id <= 0) { printFailure(); return; }
     if (findAccount(id) != nullptr) { printFailure(); return; }
-    type = std::toupper(type);
     if (type != 'S' && type != 'C') { printFailure(); return; }
     if (accountName.empty()) { printFailure(); return; }
     if (balance < 0) { printFailure(); return; }
