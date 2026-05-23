@@ -9,6 +9,14 @@ class Command {
 private:
     BankSystem& system;
 
+    static bool isPositiveInt(const std::string& s) {
+        if (s.empty()) return false;
+        for (char c : s) {
+            if (c < '0' || c > '9') return false;
+        }
+        return true;
+    }
+
 public:
     Command(BankSystem &sys) : system(sys) {}
 
@@ -75,14 +83,7 @@ public:
         else if (cmd == "ADD_DAY") {
             std::string daysStr;
             if (!(iss >> daysStr)) { Tools::printFailure(); return; }
-            bool allDigits = !daysStr.empty();
-            for (char c : daysStr) {
-                if (!(c >= '0' && c <= '9')) {
-                    allDigits = false;
-                    break;
-                }
-            }
-            if (!allDigits) { Tools::printFailure(); return; }
+            if (!isPositiveInt(daysStr)) { Tools::printFailure(); return; }
             int days = std::stoi(daysStr);
             if (days > 0) {
                 system.addDays(days);
@@ -91,8 +92,14 @@ public:
             }
         }
         else if (cmd == "SET_DATE") {
-            int year, month, day;
-            if (!(iss >> year >> month >> day)) { Tools::printFailure(); return; }
+            std::string yStr, mStr, dStr;
+            if (!(iss >> yStr >> mStr >> dStr)) { Tools::printFailure(); return; }
+            if (!isPositiveInt(yStr) || !isPositiveInt(mStr) || !isPositiveInt(dStr)) {
+                Tools::printFailure(); return;
+            }
+            int year = std::stoi(yStr);
+            int month = std::stoi(mStr);
+            int day = std::stoi(dStr);
             system.setDate(year, month, day);
         }
         else if (cmd == "CREATE_USER") {
@@ -125,8 +132,12 @@ public:
             system.showLog();
         }
         else if (cmd == "ROLLBACK") {
-            int n;
-            if (!(iss >> n)) { Tools::printFailure(); return; }
+            std::string idStr;
+            if (!(iss >> idStr)) { Tools::printFailure(); return; }
+            if (!isPositiveInt(idStr) && idStr != "0") {
+                Tools::printFailure(); return;
+            }
+            int n = std::stoi(idStr);
             system.rollback(n);
         }
         else if (cmd == "SAVE") {
