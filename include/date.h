@@ -32,8 +32,6 @@ private:
     int day;
     int totalDays;
 
-    void updateFromTotal();
-
     static const std::string weekName[7];
     static const std::string monthName[13];
     static const int daysBeforeMonth[13];
