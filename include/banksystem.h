@@ -14,6 +14,7 @@ private:
     std::vector<Account*> accounts;
     std::vector<std::string> logRecords;
     bool m_silent = false;
+    std::string m_currentCommand;
 
     Account* findAccount(int id) const;
     User* findUser(const std::string &name) const;
@@ -64,4 +65,5 @@ public:
     bool isLegalName(const std::string &name) const;
     bool isInitialState() const { return logRecords.empty(); }
     void setSilent(bool s) { m_silent = s; }
+    void setRawCommand(const std::string &cmd) { m_currentCommand = cmd; }
 };

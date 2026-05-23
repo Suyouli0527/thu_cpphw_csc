@@ -13,6 +13,7 @@ public:
     Command(BankSystem &sys) : system(sys) {}
 
     void execute(const std::string &command) {
+        system.setRawCommand(command);
         std::istringstream iss(command);
         std::string cmd;
         iss >> cmd;
@@ -72,10 +73,19 @@ public:
             system.showDate();
         }
         else if (cmd == "ADD_DAY") {
-            double days;
-            if (!(iss >> days)) { Tools::printFailure(); return; }
-            if (days > 0 && days == static_cast<int>(days)) {
-                system.addDays(static_cast<int>(days));
+            std::string daysStr;
+            if (!(iss >> daysStr)) { Tools::printFailure(); return; }
+            bool allDigits = !daysStr.empty();
+            for (char c : daysStr) {
+                if (!(c >= '0' && c <= '9')) {
+                    allDigits = false;
+                    break;
+                }
+            }
+            if (!allDigits) { Tools::printFailure(); return; }
+            int days = std::stoi(daysStr);
+            if (days > 0) {
+                system.addDays(days);
             } else {
                 Tools::printFailure();
             }
