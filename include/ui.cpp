@@ -3,38 +3,12 @@
 #include <sstream>
 #include <algorithm>
 
-#ifdef _WIN32
-#include <conio.h>
-#else
-#include <termios.h>
-#include <unistd.h>
-#endif
-
 BankUI::BankUI(BankSystem& sys) : system(sys), cmd(sys), currentMode(Mode::NONE), insertedCardId(-1) {}
 
 std::string BankUI::getPasswordInput(const std::string &prompt) const {
     std::cout << prompt;
     std::string pwd;
-#ifdef _WIN32
-    char ch;
-    while ((ch = _getch()) != '\r' && ch != '\n') {
-        if (ch == '\b') {
-            if (!pwd.empty()) pwd.pop_back();
-        } else {
-            pwd += ch;
-            std::cout << '*';
-        }
-    }
-    std::cout << std::endl;
-#else
-    termios oldt, newt;
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= ~(ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
     std::getline(std::cin, pwd);
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-#endif
     return pwd;
 }
 
