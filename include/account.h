@@ -2,6 +2,7 @@
 #include "date.h"
 #include "interestCalculator.h"
 #include <string>
+#include <vector>
 
 class Account {
 protected:
@@ -32,11 +33,28 @@ public:
     bool modifyName(const std::string &newName);
 };
 
+struct FixedDeposit {
+    double principal;
+    int months;
+    Date depositDate;
+    Date maturityDate;
+    bool partiallyWithdrawn;
+};
+
 class SavingAccount : public Account {
+    std::vector<FixedDeposit> fixedDeposits;
+
 public:
     SavingAccount(int id, char type, const std::string &name, double balance, const Date &openDate);
     bool deposit(const Date &date, double amount) override;
     bool withdraw(const Date &date, double amount) override;
+
+    bool fixedDeposit(const Date &date, double amount, int months);
+    bool fixedWithdraw(const Date &date, double amount);
+    void updateFixedDeposits(const Date &date);
+    std::vector<FixedDeposit>& getFixedDeposits() { return fixedDeposits; }
+    const std::vector<FixedDeposit>& getFixedDeposits() const { return fixedDeposits; }
+    int getFixedDepositCount() const { return fixedDeposits.size(); }
 };
 
 class CreditAccount : public Account {

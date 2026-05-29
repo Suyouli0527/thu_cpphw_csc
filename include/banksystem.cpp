@@ -74,6 +74,9 @@ bool BankSystem::isLegalName(const std::string &name) const {
 void BankSystem::updateAllAccountsInterest(const Date &newDate) {
     for (auto acc : accounts) {
         acc->updateInterest(newDate);
+        if (acc->getType() == 'S') {
+            static_cast<SavingAccount*>(acc)->updateFixedDeposits(newDate);
+        }
     }
 }
 
@@ -99,6 +102,21 @@ void BankSystem::printAccountInfo(int id) const {
     if (acc->getType() == 'C') {
         const CreditAccount* creditAcc = static_cast<const CreditAccount*>(acc);
         std::cout << " " << Tools::formatAmount(creditAcc->getCredit());
+    }
+    if (acc->getType() == 'S') {
+        const SavingAccount* savingAcc = static_cast<const SavingAccount*>(acc);
+        std::cout << " " << savingAcc->getFixedDepositCount();
+        for (const auto& fd : savingAcc->getFixedDeposits()) {
+            std::cout << " " << fd.months << " "
+                      << Tools::formatAmount(fd.principal) << " "
+                      << fd.depositDate.getYear() << "-"
+                      << fd.depositDate.getMonth() << "-"
+                      << fd.depositDate.getDay() << " "
+                      << fd.maturityDate.getYear() << "-"
+                      << fd.maturityDate.getMonth() << "-"
+                      << fd.maturityDate.getDay() << " "
+                      << (fd.partiallyWithdrawn ? "1" : "0");
+        }
     }
     std::cout << std::endl;
 }
@@ -205,6 +223,32 @@ void BankSystem::transfer(int srcId, int dstId, double amount) {
     dstAcc->deposit(currentDate, amount);
     printSuccess();
     logRecords.push_back(m_currentCommand);
+}
+
+void BankSystem::fixedDeposit(int id, double amount, int months) {
+    Account* acc = findAccount(id);
+    if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (acc->getType() != 'S') { printFailure(); return; }
+    SavingAccount* savingAcc = static_cast<SavingAccount*>(acc);
+    if (savingAcc->fixedDeposit(currentDate, amount, months)) {
+        printSuccess();
+        logRecords.push_back(m_currentCommand);
+    } else {
+        printFailure();
+    }
+}
+
+void BankSystem::fixedWithdraw(int id, double amount) {
+    Account* acc = findAccount(id);
+    if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (acc->getType() != 'S') { printFailure(); return; }
+    SavingAccount* savingAcc = static_cast<SavingAccount*>(acc);
+    if (savingAcc->fixedWithdraw(currentDate, amount)) {
+        printSuccess();
+        logRecords.push_back(m_currentCommand);
+    } else {
+        printFailure();
+    }
 }
 
 // ==================== Date & Interest ====================
@@ -363,6 +407,14 @@ void BankSystem::rollback(int n) {
             int srcId, dstId; double amount;
             iss >> srcId >> dstId >> amount;
             transfer(srcId, dstId, amount);
+        } else if (action == "FIXED_DEPOSIT") {
+            int id; double amount; int months;
+            iss >> id >> amount >> months;
+            fixedDeposit(id, amount, months);
+        } else if (action == "FIXED_WITHDRAW") {
+            int id; double amount;
+            iss >> id >> amount;
+            fixedWithdraw(id, amount);
         } else if (action == "ADD_DAY") {
             int days; iss >> days;
             addDays(days);
@@ -459,6 +511,14 @@ void BankSystem::resume(const std::string &filename) {
             int srcId, dstId; double amount;
             iss >> srcId >> dstId >> amount;
             transfer(srcId, dstId, amount);
+        } else if (action == "FIXED_DEPOSIT") {
+            int id; double amount; int months;
+            iss >> id >> amount >> months;
+            fixedDeposit(id, amount, months);
+        } else if (action == "FIXED_WITHDRAW") {
+            int id; double amount;
+            iss >> id >> amount;
+            fixedWithdraw(id, amount);
         } else if (action == "ADD_DAY") {
             int days; iss >> days;
             addDays(days);

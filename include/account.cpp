@@ -42,6 +42,53 @@ bool SavingAccount::withdraw(const Date &, double amount) {
     return true;
 }
 
+bool SavingAccount::fixedDeposit(const Date &date, double amount, int months) {
+    if (amount < 0 || amount > balance) return false;
+    if (InterestCalculator::getFixedRate(months) == 0) return false;
+
+    Date maturity = date;
+    int days = 0;
+    for (int i = 0; i < 6; i++) {
+        if (InterestCalculator::fixedMonths[i] == months) {
+            days = InterestCalculator::fixedDays[i];
+            break;
+        }
+    }
+    if (days == 0) return false;
+    maturity.addDays(days);
+
+    balance -= amount;
+    fixedDeposits.push_back({amount, months, date, maturity, false});
+    return true;
+}
+
+bool SavingAccount::fixedWithdraw(const Date &date, double amount) {
+    if (amount < 0) return false;
+
+    for (auto it = fixedDeposits.begin(); it != fixedDeposits.end(); ++it) {
+        if (date - it->maturityDate < 0 && !it->partiallyWithdrawn && amount <= it->principal) {
+            double interest = InterestCalculator::calcEarlyWithdrawInterest(amount, it->depositDate, date);
+            balance += amount + interest;
+            it->principal -= amount;
+            it->partiallyWithdrawn = true;
+            return true;
+        }
+    }
+    return false;
+}
+
+void SavingAccount::updateFixedDeposits(const Date &date) {
+    for (auto it = fixedDeposits.begin(); it != fixedDeposits.end(); ) {
+        if (date - it->maturityDate >= 0) {
+            double interest = InterestCalculator::calcFixedInterest(it->principal, it->months);
+            balance += it->principal + interest;
+            it = fixedDeposits.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
 CreditAccount::CreditAccount(int id, char, const std::string &name, double creditAmount, const Date &openDate)
     : Account(id, 'C', name, 0, openDate), credit(creditAmount) {}
 

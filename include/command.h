@@ -77,6 +77,16 @@ public:
             if (!(iss >> srcId >> dstId >> amount)) { Tools::printFailure(); return; }
             system.transfer(srcId, dstId, amount);
         }
+        else if (cmd == "FIXED_DEPOSIT") {
+            int id; double amount; int months;
+            if (!(iss >> id >> amount >> months)) { Tools::printFailure(); return; }
+            system.fixedDeposit(id, amount, months);
+        }
+        else if (cmd == "FIXED_WITHDRAW") {
+            int id; double amount;
+            if (!(iss >> id >> amount)) { Tools::printFailure(); return; }
+            system.fixedWithdraw(id, amount);
+        }
         else if (cmd == "SHOW_DATE") {
             system.showDate();
         }

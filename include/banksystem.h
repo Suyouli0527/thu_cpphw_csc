@@ -43,6 +43,8 @@ public:
     void deposit(int id, double amount);
     void withdraw(int id, double amount);
     void transfer(int srcId, int dstId, double amount);
+    void fixedDeposit(int id, double amount, int months);
+    void fixedWithdraw(int id, double amount);
 
     void showDate() const;
     void addDays(int days);
