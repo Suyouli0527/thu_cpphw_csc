@@ -41,6 +41,7 @@ public:
     void removeOwner(int id, const std::string &userName);
     void modifyName(int id, const std::string &username, int accountPassword);
     void modifyCredit(int id, double newCredit, int accountPassword);
+    void modifyShared(int id, bool shared);
     void changeUserPassword(const std::string &oldPassword, const std::string &newPassword);
     void changeAccountPassword(int id, int oldPassword, int newPassword);
     void query(int id, int accountPassword) const;

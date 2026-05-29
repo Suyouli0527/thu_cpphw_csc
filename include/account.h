@@ -33,6 +33,7 @@ public:
     double getBalance() const { return balance; }
     Date getOpenDate() const { return openDate; }
     bool isShared() const { return shared; }
+    void setShared(bool s) { shared = s; }
     const std::vector<std::string>& getOwners() const { return owners; }
     void addOwner(const std::string &userName);
     void removeOwner(const std::string &userName);

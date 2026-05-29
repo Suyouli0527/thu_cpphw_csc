@@ -58,6 +58,14 @@ public:
                 int id, accountPassword; double newCredit;
                 if (!(iss >> id >> newCredit >> accountPassword)) return false;
                 system.modifyCredit(id, newCredit, accountPassword);
+            } else if (subCmd == "SHARED") {
+                int id; std::string sharedStr;
+                if (!(iss >> id >> sharedStr)) return false;
+                bool shared;
+                if (sharedStr == "ys") shared = true;
+                else if (sharedStr == "ns") shared = false;
+                else return false;
+                system.modifyShared(id, shared);
             } else return false;
         }
         else if (cmd == "MODIFY_USERPASSWORD") {

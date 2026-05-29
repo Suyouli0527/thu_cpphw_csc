@@ -30,6 +30,7 @@ void BankUI::showHelp(Mode mode) const {
     std::cout << "  QUERYALL                          查询所有账户\n";
     std::cout << "  MODIFY NAME id newname pwd        修改账户名\n";
     std::cout << "  MODIFY CREDIT id credit pwd        修改信用额度\n";
+    std::cout << "  MODIFY_SHARED id ys/ns              修改共享状态\n";
     std::cout << "  TRANSFER src dst amount pwd        转账\n";
     std::cout << "  FIXED_DEPOSIT id amount months pwd 定期存款\n";
     std::cout << "  FIXED_WITHDRAW id amount pwd       定期提前支取\n";
@@ -225,12 +226,13 @@ void BankUI::run() {
             }
         } else if (choice == "3") {
             std::cout << "请输入账户ID: ";
-            std::string idStr;
-            if (!std::getline(std::cin, idStr)) break;
-            int id = std::stoi(idStr);
-            std::string pwd = getPasswordInput("请输入账户密码: ");
+            int id;
+            if (!(std::cin >> id)) break;
+            std::cout << "请输入账户密码: ";
+            int pwd;
+            if (!(std::cin >> pwd)) break;
             Account* acc = system.findAccountForTest(id);
-            if (acc && acc->verifyAccountPassword(std::stoi(pwd))) {
+            if (acc && acc->verifyAccountPassword(pwd)) {
                 insertedCardId = id;
                 if (!acc->getOwners().empty()) {
                     system.setSilent(true);

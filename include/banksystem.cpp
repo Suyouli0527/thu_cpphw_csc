@@ -223,6 +223,15 @@ void BankSystem::modifyCredit(int id, double newCredit, int accountPassword) {
     logRecords.push_back(m_currentCommand);
 }
 
+void BankSystem::modifyShared(int id, bool shared) {
+    if (!isAdmin()) { printFailure(); return; }
+    Account* acc = findAccount(id);
+    if (!acc) { printFailure(); return; }
+    acc->setShared(shared);
+    printSuccess();
+    logRecords.push_back(m_currentCommand);
+}
+
 void BankSystem::changeUserPassword(const std::string &oldPassword, const std::string &newPassword) {
     User* user = findUser(currentUserName);
     if (!user) { printFailure(); return; }
@@ -499,6 +508,10 @@ void BankSystem::rollback(int n) {
                 int id, accPwd; double credit;
                 iss >> id >> credit >> accPwd;
                 modifyCredit(id, credit, accPwd);
+            } else if (subAction == "SHARED") {
+                int id; std::string sharedStr;
+                iss >> id >> sharedStr;
+                modifyShared(id, sharedStr == "ys");
             }
         } else if (action == "MODIFY_USERPASSWORD") {
             std::string oldPwd, newPwd;
@@ -628,6 +641,10 @@ void BankSystem::resume(const std::string &filename) {
                 int id, accPwd; double credit;
                 iss >> id >> credit >> accPwd;
                 modifyCredit(id, credit, accPwd);
+            } else if (subAction == "SHARED") {
+                int id; std::string sharedStr;
+                iss >> id >> sharedStr;
+                modifyShared(id, sharedStr == "ys");
             }
         } else if (action == "MODIFY_USERPASSWORD") {
             std::string oldPwd, newPwd;
