@@ -1,7 +1,7 @@
 #include "ui.h"
 #include <iostream>
 #include <sstream>
-#include <algorithm>
+#include <iomanip>
 
 BankUI::BankUI(BankSystem& sys) : system(sys), cmd(sys), currentMode(Mode::NONE), insertedCardId(-1) {}
 
@@ -12,61 +12,66 @@ std::string BankUI::getPasswordInput(const std::string &prompt) const {
     return pwd;
 }
 
-void BankUI::showHelp(Mode mode) const {
-    std::cout << "\n--- 可用命令 ---\n";
-    if (mode == Mode::ADMIN) {
-        std::cout << "  CREATE_USER username password   创建用户\n";
-        std::cout << "  DELETE_USER username           删除用户\n";
-        std::cout << "  QUERY_USER username             查询用户\n";
-        std::cout << "  QUERY_USERLIST                  查询所有用户\n";
-        std::cout << "  ADD_OWNER id username            添加共有人\n";
-        std::cout << "  REMOVE_OWNER id username         移除共有人\n";
-    }
-    std::cout << "  OPEN id type name balance pwd shared(0/1) [repDay]  开立账户\n";
-    std::cout << "  CLOSE id pwd                     关闭账户\n";
-    std::cout << "  DEPOSIT id amount pwd              存款\n";
-    std::cout << "  WITHDRAW id amount pwd             取款\n";
-    std::cout << "  QUERY id pwd                      查询账户\n";
-    std::cout << "  QUERYALL                          查询所有账户\n";
-    std::cout << "  MODIFY NAME id newname pwd        修改账户名\n";
-    std::cout << "  MODIFY CREDIT id credit pwd        修改信用额度\n";
-    std::cout << "  MODIFY_SHARED id ys/ns              修改共享状态\n";
-    std::cout << "  TRANSFER src dst amount pwd        转账\n";
-    std::cout << "  FIXED_DEPOSIT id amount months pwd 定期存款\n";
-    std::cout << "  FIXED_WITHDRAW id amount pwd       定期提前支取\n";
-    std::cout << "  CONSUME id amount pwd              消费(信用)\n";
-    std::cout << "  CASH_ADVANCE id amount pwd         取现(信用)\n";
-    std::cout << "  MODIFY_USERPASSWORD old new        修改用户密码\n";
-    std::cout << "  MODIFY_ACCOUNTPASSWORD id old new   修改账户密码\n";
-    std::cout << "  ADD_DAY days                       推进日期\n";
-    std::cout << "  SET_DATE y m d                     设置日期\n";
-    std::cout << "  SHOW_DATE                         显示当前日期\n";
-    std::cout << "  WHOAMI                             当前用户\n";
-    std::cout << "  LOG                               操作日志\n";
-    std::cout << "  ROLLBACK n                         回滚\n";
-    std::cout << "  HELP                              显示帮助\n";
-    if (mode == Mode::CARD) {
-        std::cout << "  EJECT_CARD                         退出插卡模式\n";
-    } else {
-        std::cout << "  EXIT / LOGOUT                     退出登录\n";
-    }
-    std::cout << "-----------------\n\n";
+std::string BankUI::promptLine(const std::string &label) const {
+    std::cout << label;
+    std::string line;
+    if (!std::getline(std::cin, line)) return "";
+    if (line == "b" || line == "B") return "";
+    return line;
 }
 
-void BankUI::showMainMenu() {
-    std::cout << "\n============================\n";
-    std::cout << "    银行管理系统\n";
-    std::cout << "============================\n";
-    std::cout << " [1] 管理员登录\n";
-    std::cout << " [2] 普通用户登录\n";
-    std::cout << " [3] 插卡操作\n";
-    std::cout << " [0] 退出系统\n";
-    std::cout << "============================\n";
+bool BankUI::promptInt(const std::string &label, int &out) const {
+    while (true) {
+        std::cout << label;
+        std::string line;
+        if (!std::getline(std::cin, line)) return false;
+        if (line == "b" || line == "B") return false;
+        std::istringstream iss(line);
+        int val;
+        if (iss >> val) { out = val; return true; }
+        std::cout << " [输入无效，请输入整数，输入 b 返回]" << std::endl;
+    }
+}
+
+bool BankUI::promptDouble(const std::string &label, double &out) const {
+    while (true) {
+        std::cout << label;
+        std::string line;
+        if (!std::getline(std::cin, line)) return false;
+        if (line == "b" || line == "B") return false;
+        std::istringstream iss(line);
+        double val;
+        if (iss >> val) { out = val; return true; }
+        std::cout << " [输入无效，请输入数字，输入 b 返回]" << std::endl;
+    }
+}
+
+std::string BankUI::injectCardId(const std::string &cmdStr) const {
+    std::istringstream iss(cmdStr);
+    std::string action;
+    iss >> action;
+    std::ostringstream oss;
+    oss << action << " " << insertedCardId;
+    std::string rest;
+    std::getline(iss, rest);
+    if (!rest.empty()) oss << rest;
+    return oss.str();
+}
+
+void BankUI::executeAndFeedback(const std::string &commandStr) {
+    system.setSilent(true);
+    bool parseOk = cmd.execute(commandStr);
+    system.setSilent(false);
+    if (!parseOk) {
+        std::cout << " [命令格式错误]" << std::endl;
+    } else {
+        feedback(cmd.lastAction(), system.lastResult());
+    }
 }
 
 void BankUI::feedback(const std::string &action, bool ok) const {
     std::string upper = action;
-    std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
+    for (size_t i = 0; i < upper.size(); i++) upper[i] = toupper(upper[i]);
     if (!ok) {
         if (upper == "OPEN") std::cout << " [开户失败: 参数错误或ID重复]";
         else if (upper == "CLOSE") std::cout << " [销户失败]";
@@ -75,6 +80,7 @@ void BankUI::feedback(const std::string &action, bool ok) const {
         else if (upper == "TRANSFER") std::cout << " [转账失败]";
         else if (upper == "QUERY") std::cout << " [查询失败: 权限不足或密码错误]";
         else if (upper == "MODIFY") std::cout << " [修改失败]";
+        else if (upper == "MODIFY_SHARED") std::cout << " [修改失败]";
         else if (upper == "MODIFY_USERPASSWORD") std::cout << " [修改失败: 旧密码错误]";
         else if (upper == "MODIFY_ACCOUNTPASSWORD") std::cout << " [修改失败]";
         else if (upper == "ADD_OWNER") std::cout << " [添加共有人失败]";
@@ -93,6 +99,7 @@ void BankUI::feedback(const std::string &action, bool ok) const {
         else if (upper == "CONSUME") std::cout << " [消费成功]";
         else if (upper == "CASH_ADVANCE") std::cout << " [取现成功]";
         else if (upper == "MODIFY") std::cout << " [修改成功]";
+        else if (upper == "MODIFY_SHARED") std::cout << " [修改共享状态成功]";
         else if (upper == "MODIFY_USERPASSWORD") std::cout << " [用户密码修改成功]";
         else if (upper == "MODIFY_ACCOUNTPASSWORD") std::cout << " [账户密码修改成功]";
         else if (upper == "ADD_OWNER") std::cout << " [添加共有人成功]";
@@ -105,100 +112,552 @@ void BankUI::feedback(const std::string &action, bool ok) const {
     std::cout << std::endl;
 }
 
-static bool isCardAllowed(const std::string &action) {
-    return action == "DEPOSIT" || action == "WITHDRAW" || action == "QUERY"
-        || action == "CLOSE" || action == "MODIFY" || action == "TRANSFER"
-        || action == "FIXED_DEPOSIT" || action == "FIXED_WITHDRAW"
-        || action == "CONSUME" || action == "CASH_ADVANCE";
-}
 
-static bool isAdminCommand(const std::string &action) {
-    return action == "CREATE_USER" || action == "DELETE_USER"
-        || action == "QUERY_USER" || action == "QUERY_USERLIST"
-        || action == "ADD_OWNER" || action == "REMOVE_OWNER"
-        || action == "MODIFY_SHARED";
-}
 
-bool BankUI::executeCommand(const std::string &input) {
-    std::istringstream iss(input);
-    std::string action;
-    iss >> action;
-
-    if (action == "HELP") { showHelp(currentMode); return true; }
-    if (action == "EXIT" || action == "LOGOUT" || action == "EJECT_CARD") return false;
-
-    std::string commandToExecute;
-
-    if (currentMode == Mode::CARD && insertedCardId != -1) {
-        if (!isCardAllowed(action)) {
-            std::cout << " [插卡模式下不支持此命令]" << std::endl;
-            return true;
+std::string BankUI::collectOpen() {
+    int id; std::string typeStr, name; double balance; int pwd, sharedInt; int repDay = 0;
+    if (!promptInt("请输入账户ID: ", id)) return "";
+    while (true) {
+        std::string t = promptLine("请输入账户类型 (S=储蓄, C=信用): ");
+        if (t.empty()) return "";
+        if (t == "S" || t == "C") { typeStr = t; break; }
+        std::cout << " [无效类型]" << std::endl;
+    }
+    name = promptLine("请输入账户名称: ");
+    if (name.empty()) return "";
+    if (!promptDouble("请输入初始余额: ", balance)) return "";
+    if (typeStr == "C") {
+        while (true) {
+            if (!promptInt("请输入还款日 (1-28): ", repDay)) return "";
+            if (repDay >= 1 && repDay <= 28) break;
+            std::cout << " [还款日须为1-28]" << std::endl;
         }
-        std::ostringstream rewritten;
-        rewritten << action << " " << insertedCardId;
-        std::string rest;
-        std::getline(iss, rest);
-        if (!rest.empty()) rewritten << rest;
-        commandToExecute = rewritten.str();
-    } else {
-        if (currentMode != Mode::ADMIN && isAdminCommand(action)) {
-            std::cout << " [无权限: 需要管理员权限]" << std::endl;
-            return true;
+    }
+    while (true) {
+        if (!promptInt("请输入账户密码(6位数字): ", pwd)) return "";
+        if (pwd >= 100000 && pwd <= 999999) break;
+        std::cout << " [密码必须为6位数字(100000-999999)]" << std::endl;
+    }
+    while (true) {
+        std::string s = promptLine("是否共享账户? (1=共享, 0=独占): ");
+        if (s.empty()) return "";
+        if (s == "0" || s == "1") { sharedInt = s[0] - '0'; break; }
+        std::cout << " [请输入0或1]" << std::endl;
+    }
+    std::ostringstream oss;
+    oss << "OPEN " << id << " " << typeStr << " " << name << " " << balance;
+    if (typeStr == "C") oss << " " << repDay;
+    oss << " " << pwd << " " << sharedInt;
+    return oss.str();
+}
+
+std::string BankUI::collectClose() {
+    int pwd;
+    if (!promptInt("请输入账户密码: ", pwd)) return "";
+    std::ostringstream oss;
+    oss << "CLOSE " << pwd;
+    return currentMode == Mode::CARD ? injectCardId(oss.str()) : oss.str();
+}
+
+std::string BankUI::collectQuery() {
+    int pwd;
+    if (!promptInt("请输入账户密码: ", pwd)) return "";
+    std::ostringstream oss;
+    oss << "QUERY " << pwd;
+    return currentMode == Mode::CARD ? injectCardId(oss.str()) : oss.str();
+}
+
+std::string BankUI::collectDeposit() {
+    double amount; int pwd;
+    if (!promptDouble("请输入存款金额: ", amount)) return "";
+    if (!promptInt("请输入账户密码: ", pwd)) return "";
+    std::ostringstream oss;
+    oss << "DEPOSIT " << amount << " " << pwd;
+    return currentMode == Mode::CARD ? injectCardId(oss.str()) : oss.str();
+}
+
+std::string BankUI::collectWithdraw() {
+    double amount; int pwd;
+    if (!promptDouble("请输入取款金额: ", amount)) return "";
+    if (!promptInt("请输入账户密码: ", pwd)) return "";
+    std::ostringstream oss;
+    oss << "WITHDRAW " << amount << " " << pwd;
+    return currentMode == Mode::CARD ? injectCardId(oss.str()) : oss.str();
+}
+
+std::string BankUI::collectTransfer() {
+    int dstId; double amount; int pwd;
+    if (!promptInt("请输入转入账户ID: ", dstId)) return "";
+    if (!promptDouble("请输入转账金额: ", amount)) return "";
+    if (!promptInt("请输入账户密码: ", pwd)) return "";
+    std::ostringstream oss;
+    oss << "TRANSFER " << dstId << " " << amount << " " << pwd;
+    return currentMode == Mode::CARD ? injectCardId(oss.str()) : oss.str();
+}
+
+std::string BankUI::collectFixedDeposit() {
+    double amount; int months, pwd;
+    if (!promptDouble("请输入存款金额: ", amount)) return "";
+    if (!promptInt("请输入存款期限(月): ", months)) return "";
+    if (!promptInt("请输入账户密码: ", pwd)) return "";
+    std::ostringstream oss;
+    oss << "FIXED_DEPOSIT " << amount << " " << months << " " << pwd;
+    return currentMode == Mode::CARD ? injectCardId(oss.str()) : oss.str();
+}
+
+std::string BankUI::collectFixedWithdraw() {
+    double amount; int pwd;
+    if (!promptDouble("请输入支取金额: ", amount)) return "";
+    if (!promptInt("请输入账户密码: ", pwd)) return "";
+    std::ostringstream oss;
+    oss << "FIXED_WITHDRAW " << amount << " " << pwd;
+    return currentMode == Mode::CARD ? injectCardId(oss.str()) : oss.str();
+}
+
+std::string BankUI::collectConsume() {
+    double amount; int pwd;
+    if (!promptDouble("请输入消费金额: ", amount)) return "";
+    if (!promptInt("请输入账户密码: ", pwd)) return "";
+    std::ostringstream oss;
+    oss << "CONSUME " << amount << " " << pwd;
+    return currentMode == Mode::CARD ? injectCardId(oss.str()) : oss.str();
+}
+
+std::string BankUI::collectCashAdvance() {
+    double amount; int pwd;
+    if (!promptDouble("请输入取现金额: ", amount)) return "";
+    if (!promptInt("请输入账户密码: ", pwd)) return "";
+    std::ostringstream oss;
+    oss << "CASH_ADVANCE " << amount << " " << pwd;
+    return currentMode == Mode::CARD ? injectCardId(oss.str()) : oss.str();
+}
+
+std::string BankUI::collectModifyName() {
+    std::string newName; int pwd;
+    if (currentMode != Mode::CARD) {
+        int id;
+        if (!promptInt("请输入账户ID: ", id)) return "";
+        newName = promptLine("请输入新账户名称: ");
+        if (newName.empty()) return "";
+        if (!promptInt("请输入账户密码: ", pwd)) return "";
+        std::ostringstream oss;
+        oss << "MODIFY NAME " << id << " " << newName << " " << pwd;
+        return oss.str();
+    }
+    newName = promptLine("请输入新账户名称: ");
+    if (newName.empty()) return "";
+    if (!promptInt("请输入账户密码: ", pwd)) return "";
+    std::ostringstream oss;
+    oss << "MODIFY NAME " << newName << " " << pwd;
+    return injectCardId(oss.str());
+}
+
+std::string BankUI::collectModifyCredit() {
+    double credit; int pwd;
+    if (currentMode != Mode::CARD) {
+        int id;
+        if (!promptInt("请输入账户ID: ", id)) return "";
+        if (!promptDouble("请输入新信用额度: ", credit)) return "";
+        if (!promptInt("请输入账户密码: ", pwd)) return "";
+        std::ostringstream oss;
+        oss << "MODIFY CREDIT " << id << " " << credit << " " << pwd;
+        return oss.str();
+    }
+    if (!promptDouble("请输入新信用额度: ", credit)) return "";
+    if (!promptInt("请输入账户密码: ", pwd)) return "";
+    std::ostringstream oss;
+    oss << "MODIFY CREDIT " << credit << " " << pwd;
+    return injectCardId(oss.str());
+}
+
+std::string BankUI::collectModifyShared() {
+    int id; std::string sharedStr;
+    if (!promptInt("请输入账户ID: ", id)) return "";
+    while (true) {
+        sharedStr = promptLine("是否共享? (ys=共享, ns=独占): ");
+        if (sharedStr.empty()) return "";
+        if (sharedStr == "ys" || sharedStr == "ns") break;
+        std::cout << " [请输入ys或ns]" << std::endl;
+    }
+    std::ostringstream oss;
+    oss << "MODIFY_SHARED " << id << " " << sharedStr;
+    return oss.str();
+}
+
+std::string BankUI::collectModifyAccountPassword() {
+    int oldPwd, newPwd;
+    if (currentMode != Mode::CARD) {
+        int id;
+        if (!promptInt("请输入账户ID: ", id)) return "";
+        while (true) {
+            if (!promptInt("请输入旧密码: ", oldPwd)) return "";
+            if (oldPwd >= 100000 && oldPwd <= 999999) break;
+            std::cout << " [密码必须为6位数字]" << std::endl;
         }
-        commandToExecute = input;
+        while (true) {
+            if (!promptInt("请输入新密码: ", newPwd)) return "";
+            if (newPwd >= 100000 && newPwd <= 999999) break;
+            std::cout << " [密码必须为6位数字]" << std::endl;
+        }
+        std::ostringstream oss;
+        oss << "MODIFY_ACCOUNTPASSWORD " << id << " " << oldPwd << " " << newPwd;
+        return oss.str();
     }
-
-    system.setSilent(true);
-    bool parseOk = cmd.execute(commandToExecute);
-    system.setSilent(false);
-
-    if (!parseOk) {
-        std::cout << " [命令格式错误]" << std::endl;
-    } else {
-        feedback(cmd.lastAction(), system.lastResult());
+    while (true) {
+        if (!promptInt("请输入旧密码: ", oldPwd)) return "";
+        if (oldPwd >= 100000 && oldPwd <= 999999) break;
+        std::cout << " [密码必须为6位数字]" << std::endl;
     }
-    return true;
+    while (true) {
+        if (!promptInt("请输入新密码: ", newPwd)) return "";
+        if (newPwd >= 100000 && newPwd <= 999999) break;
+        std::cout << " [密码必须为6位数字]" << std::endl;
+    }
+    std::ostringstream oss;
+    oss << "MODIFY_ACCOUNTPASSWORD " << oldPwd << " " << newPwd;
+    return injectCardId(oss.str());
 }
 
-void BankUI::adminLoop() {
-    std::cout << "\n===== 管理员模式 =====\n";
-    std::string line;
+std::string BankUI::collectAddOwner() {
+    int id; std::string username;
+    if (!promptInt("请输入账户ID: ", id)) return "";
+    username = promptLine("请输入要添加的用户名: ");
+    if (username.empty()) return "";
+    std::ostringstream oss;
+    oss << "ADD_OWNER " << id << " " << username;
+    return oss.str();
+}
+
+std::string BankUI::collectRemoveOwner() {
+    int id; std::string username;
+    if (!promptInt("请输入账户ID: ", id)) return "";
+    username = promptLine("请输入要移除的用户名: ");
+    if (username.empty()) return "";
+    std::ostringstream oss;
+    oss << "REMOVE_OWNER " << id << " " << username;
+    return oss.str();
+}
+
+std::string BankUI::collectCreateUser() {
+    std::string username, password;
+    username = promptLine("请输入用户名: ");
+    if (username.empty()) return "";
+    password = promptLine("请输入密码: ");
+    if (password.empty()) return "";
+    std::ostringstream oss;
+    oss << "CREATE_USER " << username << " " << password;
+    return oss.str();
+}
+
+std::string BankUI::collectDeleteUser() {
+    std::string username = promptLine("请输入要删除的用户名: ");
+    if (username.empty()) return "";
+    std::ostringstream oss;
+    oss << "DELETE_USER " << username;
+    return oss.str();
+}
+
+std::string BankUI::collectQueryUser() {
+    std::string username = promptLine("请输入要查询的用户名: ");
+    if (username.empty()) return "";
+    std::ostringstream oss;
+    oss << "QUERY_USER " << username;
+    return oss.str();
+}
+
+std::string BankUI::collectSwitch() {
+    std::string username, password;
+    username = promptLine("请输入用户名: ");
+    if (username.empty()) return "";
+    password = promptLine("请输入密码: ");
+    if (password.empty()) return "";
+    std::ostringstream oss;
+    oss << "SWITCH " << username << " " << password;
+    return oss.str();
+}
+
+std::string BankUI::collectModifyUserPassword() {
+    std::string oldPwd, newPwd;
+    oldPwd = promptLine("请输入旧密码: ");
+    if (oldPwd.empty()) return "";
+    newPwd = promptLine("请输入新密码: ");
+    if (newPwd.empty()) return "";
+    std::ostringstream oss;
+    oss << "MODIFY_USERPASSWORD " << oldPwd << " " << newPwd;
+    return oss.str();
+}
+
+std::string BankUI::collectAddDay() {
+    int days;
+    if (!promptInt("请输入推进天数: ", days)) return "";
+    std::ostringstream oss;
+    oss << "ADD_DAY " << days;
+    return oss.str();
+}
+
+std::string BankUI::collectSetDate() {
+    int y, m, d;
+    if (!promptInt("请输入年份: ", y)) return "";
+    if (!promptInt("请输入月份: ", m)) return "";
+    if (!promptInt("请输入日期: ", d)) return "";
+    std::ostringstream oss;
+    oss << "SET_DATE " << y << " " << m << " " << d;
+    return oss.str();
+}
+
+std::string BankUI::collectRollback() {
+    int n;
+    if (!promptInt("请输入回滚操作数: ", n)) return "";
+    std::ostringstream oss;
+    oss << "ROLLBACK " << n;
+    return oss.str();
+}
+
+std::string BankUI::collectSave() {
+    std::string filename = promptLine("请输入文件名: ");
+    if (filename.empty()) return "";
+    std::ostringstream oss;
+    oss << "SAVE " << filename;
+    return oss.str();
+}
+
+std::string BankUI::collectResume() {
+    std::string filename = promptLine("请输入文件名: ");
+    if (filename.empty()) return "";
+    std::ostringstream oss;
+    oss << "RESUME " << filename;
+    return oss.str();
+}
+
+
+void BankUI::handleAccount() {
     while (true) {
-        std::cout << "\nadmin[管理员] > ";
-        if (!std::getline(std::cin, line) || line.empty()) continue;
-        if (!executeCommand(line)) break;
+        std::cout << "\n--- 账户管理 ---\n";
+        std::cout << " [1] 开户\n [2] 销户\n [3] 查询账户\n [4] 查询所有账户\n [0] 返回\n";
+        std::string choice = promptLine("请选择: ");
+        if (choice == "0") return;
+        std::string cmdStr;
+        if (choice == "1") cmdStr = collectOpen();
+        else if (choice == "2") cmdStr = collectClose();
+        else if (choice == "3") cmdStr = collectQuery();
+        else if (choice == "4") { executeAndFeedback("QUERYALL"); continue; }
+        else { std::cout << " [无效选择]" << std::endl; continue; }
+        if (!cmdStr.empty()) executeAndFeedback(cmdStr);
     }
 }
 
-void BankUI::userLoop() {
-    std::cout << "\n===== 普通用户模式 =====\n";
-    std::string line;
+void BankUI::handleDepositWithdraw() {
     while (true) {
-        std::cout << "\n" << system.getCurrentUserName() << "[普通用户] > ";
-        if (!std::getline(std::cin, line) || line.empty()) continue;
-        if (!executeCommand(line)) break;
+        std::cout << "\n--- 存取转账 ---\n";
+        std::cout << " [1] 存款\n [2] 取款\n [3] 转账\n [0] 返回\n";
+        std::string choice = promptLine("请选择: ");
+        if (choice == "0") return;
+        std::string cmdStr;
+        if (choice == "1") cmdStr = collectDeposit();
+        else if (choice == "2") cmdStr = collectWithdraw();
+        else if (choice == "3") cmdStr = collectTransfer();
+        else { std::cout << " [无效选择]" << std::endl; continue; }
+        if (!cmdStr.empty()) executeAndFeedback(cmdStr);
     }
 }
 
-void BankUI::cardLoop() {
-    std::cout << "\n===== 插卡模式 (账户 #" << insertedCardId << ") =====\n";
-    std::cout << "  提示: 账户命令无需输入 id，已自动锁定到当前账户\n";
-    showHelp(Mode::CARD);
-    std::string line;
+void BankUI::handleFixedDeposit() {
     while (true) {
-        std::cout << "\nCARD[" << insertedCardId << "] > ";
-        if (!std::getline(std::cin, line) || line.empty()) continue;
-        if (!executeCommand(line)) break;
+        std::cout << "\n--- 定期存款 ---\n";
+        std::cout << " [1] 定期存款\n [2] 定期部分提前支取\n [0] 返回\n";
+        std::string choice = promptLine("请选择: ");
+        if (choice == "0") return;
+        std::string cmdStr;
+        if (choice == "1") cmdStr = collectFixedDeposit();
+        else if (choice == "2") cmdStr = collectFixedWithdraw();
+        else { std::cout << " [无效选择]" << std::endl; continue; }
+        if (!cmdStr.empty()) executeAndFeedback(cmdStr);
+    }
+}
+
+void BankUI::handleCredit() {
+    while (true) {
+        std::cout << "\n--- 信用账户 ---\n";
+        std::cout << " [1] 消费\n [2] 取现\n [0] 返回\n";
+        std::string choice = promptLine("请选择: ");
+        if (choice == "0") return;
+        std::string cmdStr;
+        if (choice == "1") cmdStr = collectConsume();
+        else if (choice == "2") cmdStr = collectCashAdvance();
+        else { std::cout << " [无效选择]" << std::endl; continue; }
+        if (!cmdStr.empty()) executeAndFeedback(cmdStr);
+    }
+}
+
+void BankUI::handleModify() {
+    while (true) {
+        std::cout << "\n--- 账户信息修改 ---\n";
+        if (currentMode == Mode::ADMIN) {
+            std::cout << " [1] 修改账户名\n [2] 修改信用额度\n [3] 修改共享状态\n [4] 修改账户密码\n [0] 返回\n";
+        } else {
+            std::cout << " [1] 修改账户名\n [2] 修改信用额度\n [3] 修改账户密码\n [0] 返回\n";
+        }
+        std::string choice = promptLine("请选择: ");
+        if (choice == "0") return;
+        std::string cmdStr;
+        if (choice == "1") cmdStr = collectModifyName();
+        else if (choice == "2") cmdStr = collectModifyCredit();
+        else if (choice == "3") {
+            if (currentMode == Mode::ADMIN) cmdStr = collectModifyShared();
+            else cmdStr = collectModifyAccountPassword();
+        }
+        else if (choice == "4") {
+            if (currentMode == Mode::ADMIN) cmdStr = collectModifyAccountPassword();
+            else { std::cout << " [无效选择]" << std::endl; continue; }
+        }
+        else { std::cout << " [无效选择]" << std::endl; continue; }
+        if (!cmdStr.empty()) executeAndFeedback(cmdStr);
+    }
+}
+
+void BankUI::handleShared() {
+    while (true) {
+        std::cout << "\n--- 共享账户管理 ---\n";
+        std::cout << " [1] 添加共有人\n [2] 移除共有人\n [0] 返回\n";
+        std::string choice = promptLine("请选择: ");
+        if (choice == "0") return;
+        std::string cmdStr;
+        if (choice == "1") cmdStr = collectAddOwner();
+        else if (choice == "2") cmdStr = collectRemoveOwner();
+        else { std::cout << " [无效选择]" << std::endl; continue; }
+        if (!cmdStr.empty()) executeAndFeedback(cmdStr);
+    }
+}
+
+void BankUI::handleUserMgmt() {
+    while (true) {
+        std::cout << "\n--- 用户管理 ---\n";
+        std::cout << " [1] 创建用户\n [2] 删除用户\n [3] 查询用户\n [4] 查询所有用户\n [5] 切换用户\n [6] 修改用户密码\n [0] 返回\n";
+        std::string choice = promptLine("请选择: ");
+        if (choice == "0") return;
+        std::string cmdStr;
+        if (choice == "1") cmdStr = collectCreateUser();
+        else if (choice == "2") cmdStr = collectDeleteUser();
+        else if (choice == "3") cmdStr = collectQueryUser();
+        else if (choice == "4") { executeAndFeedback("QUERY_USERLIST"); continue; }
+        else if (choice == "5") cmdStr = collectSwitch();
+        else if (choice == "6") cmdStr = collectModifyUserPassword();
+        else { std::cout << " [无效选择]" << std::endl; continue; }
+        if (!cmdStr.empty()) executeAndFeedback(cmdStr);
+    }
+}
+
+void BankUI::handleDateLog() {
+    while (true) {
+        std::cout << "\n--- 日期与日志 ---\n";
+        std::cout << " [1] 显示当前日期\n [2] 推进日期\n [3] 设置日期\n [4] 操作日志\n [5] 回滚\n [6] 保存日志\n [7] 恢复日志\n [0] 返回\n";
+        std::string choice = promptLine("请选择: ");
+        if (choice == "0") return;
+        std::string cmdStr;
+        if (choice == "1") { executeAndFeedback("SHOW_DATE"); continue; }
+        else if (choice == "2") cmdStr = collectAddDay();
+        else if (choice == "3") cmdStr = collectSetDate();
+        else if (choice == "4") { executeAndFeedback("LOG"); continue; }
+        else if (choice == "5") cmdStr = collectRollback();
+        else if (choice == "6") cmdStr = collectSave();
+        else if (choice == "7") cmdStr = collectResume();
+        else { std::cout << " [无效选择]" << std::endl; continue; }
+        if (!cmdStr.empty()) executeAndFeedback(cmdStr);
+    }
+}
+
+
+void BankUI::adminModeLoop() {
+    while (true) {
+        std::cout << "\n===== 管理员模式 =====\n";
+        std::cout << " [1] 账户管理\n [2] 存取转账\n [3] 定期存款\n [4] 信用账户\n";
+        std::cout << " [5] 账户信息修改\n [6] 共享账户管理\n [7] 用户管理\n";
+        std::cout << " [8] 日期与日志\n [9] 查询当前用户\n [0] 返回主菜单\n";
+        std::string choice = promptLine("请选择: ");
+        if (choice == "0") return;
+        if (choice == "1") handleAccount();
+        else if (choice == "2") handleDepositWithdraw();
+        else if (choice == "3") handleFixedDeposit();
+        else if (choice == "4") handleCredit();
+        else if (choice == "5") handleModify();
+        else if (choice == "6") handleShared();
+        else if (choice == "7") handleUserMgmt();
+        else if (choice == "8") handleDateLog();
+        else if (choice == "9") executeAndFeedback("WHOAMI");
+        else std::cout << " [无效选择]" << std::endl;
+    }
+}
+
+void BankUI::userModeLoop() {
+    while (true) {
+        std::cout << "\n===== 普通用户模式 =====\n";
+        std::cout << " [1] 账户管理\n [2] 存取转账\n [3] 定期存款\n [4] 信用账户\n";
+        std::cout << " [5] 账户信息修改\n [6] 个人设置\n [7] 日期与日志\n [8] 查询当前用户\n [0] 返回主菜单\n";
+        std::string choice = promptLine("请选择: ");
+        if (choice == "0") return;
+        if (choice == "1") handleAccount();
+        else if (choice == "2") handleDepositWithdraw();
+        else if (choice == "3") handleFixedDeposit();
+        else if (choice == "4") handleCredit();
+        else if (choice == "5") handleModify();
+        else if (choice == "6") {
+            while (true) {
+                std::cout << "\n--- 个人设置 ---\n";
+                std::cout << " [1] 切换用户\n [2] 修改用户密码\n [0] 返回\n";
+                std::string c = promptLine("请选择: ");
+                if (c == "0") break;
+                std::string cmdStr;
+                if (c == "1") cmdStr = collectSwitch();
+                else if (c == "2") cmdStr = collectModifyUserPassword();
+                else { std::cout << " [无效选择]" << std::endl; continue; }
+                if (!cmdStr.empty()) executeAndFeedback(cmdStr);
+            }
+        }
+        else if (choice == "7") handleDateLog();
+        else if (choice == "8") executeAndFeedback("WHOAMI");
+        else std::cout << " [无效选择]" << std::endl;
+    }
+}
+
+void BankUI::cardModeLoop() {
+    while (true) {
+        std::cout << "\n===== 插卡模式 (账户 #" << insertedCardId << ") =====\n";
+        std::cout << " [1] 存取转账\n [2] 定期存款\n [3] 信用账户\n";
+        std::cout << " [4] 账户信息修改\n [5] 查询账户\n [6] 销户\n [7] 查询当前用户\n [0] 退卡返回主菜单\n";
+        std::string choice = promptLine("请选择: ");
+        if (choice == "0") return;
+        if (choice == "1") handleDepositWithdraw();
+        else if (choice == "2") handleFixedDeposit();
+        else if (choice == "3") handleCredit();
+        else if (choice == "4") handleModify();
+        else if (choice == "5") {
+            while (true) {
+                std::cout << "\n--- 查询账户 ---\n";
+                std::cout << " [1] 查询当前账户\n [2] 查询所有账户\n [0] 返回\n";
+                std::string c = promptLine("请选择: ");
+                if (c == "0") break;
+                if (c == "1") { std::string s = collectQuery(); if (!s.empty()) executeAndFeedback(s); }
+                else if (c == "2") executeAndFeedback("QUERYALL");
+                else std::cout << " [无效选择]" << std::endl;
+            }
+        }
+        else if (choice == "6") { std::string s = collectClose(); if (!s.empty()) executeAndFeedback(s); }
+        else if (choice == "7") executeAndFeedback("WHOAMI");
+        else std::cout << " [无效选择]" << std::endl;
     }
     insertedCardId = -1;
 }
 
+
 void BankUI::run() {
     while (true) {
-        showMainMenu();
-        std::cout << "请选择: ";
-        std::string choice;
-        if (!std::getline(std::cin, choice)) break;
+        std::cout << "\n============================\n";
+        std::cout << "    银行管理系统\n";
+        std::cout << "============================\n";
+        std::cout << " [1] 管理员登录\n [2] 普通用户登录\n [3] 插卡操作\n [0] 退出系统\n";
+        std::cout << "============================\n";
+        std::string choice = promptLine("请选择: ");
+        if (choice.empty()) continue;
 
         if (choice == "0") {
             std::cout << "感谢使用，再见！\n";
@@ -214,14 +673,13 @@ void BankUI::run() {
             std::cout.rdbuf(old);
             if (buf.str().find("admin") != std::string::npos) {
                 std::cout << "\n===== 管理员登录成功 =====\n";
-                adminLoop();
+                adminModeLoop();
             } else {
                 std::cout << "密码错误\n";
             }
         } else if (choice == "2") {
-            std::cout << "请输入用户名: ";
-            std::string username;
-            if (!std::getline(std::cin, username)) break;
+            std::string username = promptLine("请输入用户名: ");
+            if (username.empty()) continue;
             std::string pwd = getPasswordInput("请输入密码: ");
             system.setSilent(true);
             system.switchUser(username, pwd);
@@ -232,17 +690,19 @@ void BankUI::run() {
             std::cout.rdbuf(old);
             if (buf.str().find(username) != std::string::npos) {
                 std::cout << "\n===== 登录成功 =====\n";
-                userLoop();
+                userModeLoop();
             } else {
                 std::cout << "用户名或密码错误\n";
             }
         } else if (choice == "3") {
-            std::cout << "请输入账户ID: ";
             int id;
+            std::cout << "请输入账户ID: ";
             if (!(std::cin >> id)) break;
-            std::cout << "请输入账户密码: ";
+            std::cin.ignore();
             int pwd;
+            std::cout << "请输入账户密码: ";
             if (!(std::cin >> pwd)) break;
+            std::cin.ignore();
             Account* acc = system.findAccountForTest(id);
             if (acc && acc->verifyAccountPassword(pwd)) {
                 insertedCardId = id;
@@ -251,7 +711,7 @@ void BankUI::run() {
                     system.switchUser(acc->getOwners()[0], "dummy");
                     system.setSilent(false);
                 }
-                cardLoop();
+                cardModeLoop();
             } else {
                 std::cout << "账户不存在或密码错误\n";
             }
