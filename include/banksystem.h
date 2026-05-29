@@ -33,7 +33,7 @@ public:
     BankSystem(const BankSystem&) = delete;
     BankSystem& operator=(const BankSystem&) = delete;
 
-    void openAccount(int id, char type, const std::string &accountName, double balance);
+    void openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay = 0);
     void closeAccount(int id);
     void modifyName(int id, const std::string &username);
     void modifyCredit(int id, double newCredit);
@@ -45,6 +45,8 @@ public:
     void transfer(int srcId, int dstId, double amount);
     void fixedDeposit(int id, double amount, int months);
     void fixedWithdraw(int id, double amount);
+    void consume(int id, double amount);
+    void cashAdvance(int id, double amount);
 
     void showDate() const;
     void addDays(int days);

@@ -32,7 +32,11 @@ public:
             if (!(iss >> id >> type >> name >> balance)) {
                 Tools::printFailure(); return;
             }
-            system.openAccount(id, type, name, balance);
+            int repaymentDay = 0;
+            if (type == 'C') {
+                if (!(iss >> repaymentDay)) { Tools::printFailure(); return; }
+            }
+            system.openAccount(id, type, name, balance, repaymentDay);
         }
         else if (cmd == "CLOSE") {
             int id;
@@ -71,6 +75,16 @@ public:
             int id; double amount;
             if (!(iss >> id >> amount)) { Tools::printFailure(); return; }
             system.withdraw(id, amount);
+        }
+        else if (cmd == "CONSUME") {
+            int id; double amount;
+            if (!(iss >> id >> amount)) { Tools::printFailure(); return; }
+            system.consume(id, amount);
+        }
+        else if (cmd == "CASH_ADVANCE") {
+            int id; double amount;
+            if (!(iss >> id >> amount)) { Tools::printFailure(); return; }
+            system.cashAdvance(id, amount);
         }
         else if (cmd == "TRANSFER") {
             int srcId, dstId; double amount;

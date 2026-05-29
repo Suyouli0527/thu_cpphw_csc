@@ -73,9 +73,11 @@ bool BankSystem::isLegalName(const std::string &name) const {
 
 void BankSystem::updateAllAccountsInterest(const Date &newDate) {
     for (auto acc : accounts) {
-        acc->updateInterest(newDate);
         if (acc->getType() == 'S') {
+            acc->updateInterest(newDate);
             static_cast<SavingAccount*>(acc)->updateFixedDeposits(newDate);
+        } else if (acc->getType() == 'C') {
+            static_cast<CreditAccount*>(acc)->updateCreditInterest(newDate);
         }
     }
 }
@@ -101,7 +103,10 @@ void BankSystem::printAccountInfo(int id) const {
               << Tools::formatAmount(acc->getBalance());
     if (acc->getType() == 'C') {
         const CreditAccount* creditAcc = static_cast<const CreditAccount*>(acc);
-        std::cout << " " << Tools::formatAmount(creditAcc->getCredit());
+        std::cout << " " << Tools::formatAmount(creditAcc->getCredit())
+                  << " " << creditAcc->getRepaymentDay()
+                  << " " << Tools::formatAmount(creditAcc->getCashAdvanceDebt())
+                  << " " << Tools::formatAmount(creditAcc->getConsumeDebt());
     }
     if (acc->getType() == 'S') {
         const SavingAccount* savingAcc = static_cast<const SavingAccount*>(acc);
@@ -121,20 +126,19 @@ void BankSystem::printAccountInfo(int id) const {
     std::cout << std::endl;
 }
 
-// ==================== Account Management ====================
-
-void BankSystem::openAccount(int id, char type, const std::string &accountName, double balance) {
+void BankSystem::openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay) {
     if (id <= 0) { printFailure(); return; }
     if (findAccount(id) != nullptr) { printFailure(); return; }
     if (type != 'S' && type != 'C') { printFailure(); return; }
     if (accountName.empty()) { printFailure(); return; }
     if (balance < 0) { printFailure(); return; }
+    if (type == 'C' && (repaymentDay < 1 || repaymentDay > 28)) { printFailure(); return; }
 
     Account* newAccount = nullptr;
     if (type == 'S') {
         newAccount = new SavingAccount(id, type, accountName, balance, currentDate);
     } else {
-        newAccount = new CreditAccount(id, type, accountName, balance, currentDate);
+        newAccount = new CreditAccount(id, type, accountName, balance, repaymentDay, currentDate);
     }
     accounts.push_back(newAccount);
     User* user = findUser(currentUserName);
@@ -189,7 +193,6 @@ void BankSystem::queryAllAccounts() const {
     }
 }
 
-// ==================== Financial Transactions ====================
 
 void BankSystem::deposit(int id, double amount) {
     Account* acc = findAccount(id);
@@ -244,6 +247,32 @@ void BankSystem::fixedWithdraw(int id, double amount) {
     if (acc->getType() != 'S') { printFailure(); return; }
     SavingAccount* savingAcc = static_cast<SavingAccount*>(acc);
     if (savingAcc->fixedWithdraw(currentDate, amount)) {
+        printSuccess();
+        logRecords.push_back(m_currentCommand);
+    } else {
+        printFailure();
+    }
+}
+
+void BankSystem::consume(int id, double amount) {
+    Account* acc = findAccount(id);
+    if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (acc->getType() != 'C') { printFailure(); return; }
+    CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
+    if (creditAcc->consume(currentDate, amount)) {
+        printSuccess();
+        logRecords.push_back(m_currentCommand);
+    } else {
+        printFailure();
+    }
+}
+
+void BankSystem::cashAdvance(int id, double amount) {
+    Account* acc = findAccount(id);
+    if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (acc->getType() != 'C') { printFailure(); return; }
+    CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
+    if (creditAcc->cashAdvance(currentDate, amount)) {
         printSuccess();
         logRecords.push_back(m_currentCommand);
     } else {
@@ -379,7 +408,9 @@ void BankSystem::rollback(int n) {
         if (action == "OPEN") {
             int id; char type; std::string name; double balance;
             iss >> id >> type >> name >> balance;
-            openAccount(id, type, name, balance);
+            int repDay = 0;
+            if (type == 'C') iss >> repDay;
+            openAccount(id, type, name, balance, repDay);
         } else if (action == "CLOSE") {
             int id; iss >> id;
             closeAccount(id);
@@ -415,6 +446,14 @@ void BankSystem::rollback(int n) {
             int id; double amount;
             iss >> id >> amount;
             fixedWithdraw(id, amount);
+        } else if (action == "CONSUME") {
+            int id; double amount;
+            iss >> id >> amount;
+            consume(id, amount);
+        } else if (action == "CASH_ADVANCE") {
+            int id; double amount;
+            iss >> id >> amount;
+            cashAdvance(id, amount);
         } else if (action == "ADD_DAY") {
             int days; iss >> days;
             addDays(days);
@@ -437,7 +476,7 @@ void BankSystem::rollback(int n) {
     printSuccess();
 }
 
-// ==================== File Persistence ====================
+
 
 void BankSystem::saveLog(const std::string &filename) const {
     std::ofstream file(filename);
@@ -484,7 +523,9 @@ void BankSystem::resume(const std::string &filename) {
         if (action == "OPEN") {
             int id; char type; std::string name; double balance;
             iss >> id >> type >> name >> balance;
-            openAccount(id, type, name, balance);
+            int repDay = 0;
+            if (type == 'C') iss >> repDay;
+            openAccount(id, type, name, balance, repDay);
         } else if (action == "CLOSE") {
             int id; iss >> id;
             closeAccount(id);
@@ -519,6 +560,14 @@ void BankSystem::resume(const std::string &filename) {
             int id; double amount;
             iss >> id >> amount;
             fixedWithdraw(id, amount);
+        } else if (action == "CONSUME") {
+            int id; double amount;
+            iss >> id >> amount;
+            consume(id, amount);
+        } else if (action == "CASH_ADVANCE") {
+            int id; double amount;
+            iss >> id >> amount;
+            cashAdvance(id, amount);
         } else if (action == "ADD_DAY") {
             int days; iss >> days;
             addDays(days);

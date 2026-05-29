@@ -57,13 +57,36 @@ public:
     int getFixedDepositCount() const { return fixedDeposits.size(); }
 };
 
+struct CreditTransaction {
+    double amount;
+    char txnType; 
+    Date date;
+};
+
 class CreditAccount : public Account {
 private:
     double credit;
+    int repaymentDay;
+    std::vector<CreditTransaction> transactions;
+    Date lastInterestUpdate;
+
+    double getCashAdvanceDebtInternal() const;
+    double getConsumeDebtInternal() const;
+    Date getRepaymentDate(const Date &current) const;
+    bool isWithinGracePeriod(const Date &txnDate, const Date &checkDate) const;
+
 public:
-    CreditAccount(int id, char type, const std::string &name, double creditAmount, const Date &openDate);
+    CreditAccount(int id, char type, const std::string &name, double creditAmount, int repDay, const Date &openDate);
     bool deposit(const Date &date, double amount) override;
     bool withdraw(const Date &date, double amount) override;
+    bool consume(const Date &date, double amount);
+    bool cashAdvance(const Date &date, double amount);
+    void updateCreditInterest(const Date &targetDate);
     double getCredit() const { return credit; }
+    int getRepaymentDay() const { return repaymentDay; }
+    double getTotalDebt() const;
+    double getCashAdvanceDebt() const;
+    double getConsumeDebt() const;
+    const std::vector<CreditTransaction>& getTransactions() const { return transactions; }
     bool modifyCredit(double newCredit);
 };
