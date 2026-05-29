@@ -36,9 +36,9 @@ public:
             if (type == 'C') {
                 if (!(iss >> repaymentDay)) { Tools::printFailure(); return; }
             }
-            int accountPassword;
-            if (!(iss >> accountPassword)) { Tools::printFailure(); return; }
-            system.openAccount(id, type, name, balance, repaymentDay, accountPassword);
+            int accountPassword, sharedInt;
+            if (!(iss >> accountPassword >> sharedInt)) { Tools::printFailure(); return; }
+            system.openAccount(id, type, name, balance, repaymentDay, accountPassword, sharedInt != 0);
         }
         else if (cmd == "CLOSE") {
             int id, accountPassword;
@@ -69,6 +69,16 @@ public:
             int id, oldPassword, newPassword;
             if (!(iss >> id >> oldPassword >> newPassword)) { Tools::printFailure(); return; }
             system.changeAccountPassword(id, oldPassword, newPassword);
+        }
+        else if (cmd == "ADD_OWNER") {
+            int id; std::string userName;
+            if (!(iss >> id >> userName)) { Tools::printFailure(); return; }
+            system.addOwner(id, userName);
+        }
+        else if (cmd == "REMOVE_OWNER") {
+            int id; std::string userName;
+            if (!(iss >> id >> userName)) { Tools::printFailure(); return; }
+            system.removeOwner(id, userName);
         }
         else if (cmd == "QUERY") {
             int id, accountPassword;

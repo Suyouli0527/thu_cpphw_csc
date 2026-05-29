@@ -14,9 +14,11 @@ protected:
     Date lastInterestDate;
     double interest;
     int accountPassword;
+    bool shared;
+    std::vector<std::string> owners;
 
 public:
-    Account(int id, char type, const std::string &name, double balance, const Date &openDate, int pwd);
+    Account(int id, char type, const std::string &name, double balance, const Date &openDate, int pwd, bool isShared);
     virtual ~Account() = default;
 
     void updateInterest(const Date &targetDate);
@@ -30,6 +32,10 @@ public:
     std::string getName() const { return name; }
     double getBalance() const { return balance; }
     Date getOpenDate() const { return openDate; }
+    bool isShared() const { return shared; }
+    const std::vector<std::string>& getOwners() const { return owners; }
+    void addOwner(const std::string &userName);
+    void removeOwner(const std::string &userName);
     bool verifyAccountPassword(int pwd) const { return accountPassword == pwd; }
     bool changeAccountPassword(int oldPwd, int newPwd) {
         if (accountPassword != oldPwd) return false;
@@ -53,7 +59,7 @@ class SavingAccount : public Account {
     std::vector<FixedDeposit> fixedDeposits;
 
 public:
-    SavingAccount(int id, char type, const std::string &name, double balance, const Date &openDate, int pwd);
+    SavingAccount(int id, char type, const std::string &name, double balance, const Date &openDate, int pwd, bool isShared);
     bool deposit(const Date &date, double amount) override;
     bool withdraw(const Date &date, double amount) override;
 
@@ -84,7 +90,7 @@ private:
     bool isWithinGracePeriod(const Date &txnDate, const Date &checkDate) const;
 
 public:
-    CreditAccount(int id, char type, const std::string &name, double creditAmount, int repDay, const Date &openDate, int pwd);
+    CreditAccount(int id, char type, const std::string &name, double creditAmount, int repDay, const Date &openDate, int pwd, bool isShared);
     bool deposit(const Date &date, double amount) override;
     bool withdraw(const Date &date, double amount) override;
     bool consume(const Date &date, double amount);

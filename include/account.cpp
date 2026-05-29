@@ -1,8 +1,26 @@
 #include "account.h"
 
-Account::Account(int id, char type, const std::string &name, double balance, const Date &openDate, int pwd)
+Account::Account(int id, char type, const std::string &name, double balance, const Date &openDate, int pwd, bool isShared)
     : id(id), name(name), type(type), balance(balance), openDate(openDate),
-      lastInterestDate(openDate), interest(0.0), accountPassword(pwd) {}
+      lastInterestDate(openDate), interest(0.0), accountPassword(pwd), shared(isShared) {}
+
+void Account::addOwner(const std::string &userName) {
+    if (owners.size() >= 5) return;
+    for (const auto &o : owners) {
+        if (o == userName) return;
+    }
+    owners.push_back(userName);
+}
+
+void Account::removeOwner(const std::string &userName) {
+    if (owners.size() <= 1) return;
+    for (auto it = owners.begin(); it != owners.end(); ++it) {
+        if (*it == userName) {
+            owners.erase(it);
+            return;
+        }
+    }
+}
 
 bool Account::modifyName(const std::string &newName) {
     name = newName;
@@ -27,8 +45,8 @@ void Account::updateInterest(const Date &targetDate) {
     lastInterestDate = targetDate;
 }
 
-SavingAccount::SavingAccount(int id, char, const std::string &name, double balance, const Date &openDate, int pwd)
-    : Account(id, 'S', name, balance, openDate, pwd) {}
+SavingAccount::SavingAccount(int id, char, const std::string &name, double balance, const Date &openDate, int pwd, bool isShared)
+    : Account(id, 'S', name, balance, openDate, pwd, isShared) {}
 
 bool SavingAccount::deposit(const Date &, double amount) {
     if (amount < 0) return false;
@@ -89,8 +107,8 @@ void SavingAccount::updateFixedDeposits(const Date &date) {
     }
 }
 
-CreditAccount::CreditAccount(int id, char, const std::string &name, double creditAmount, int repDay, const Date &openDate, int pwd)
-    : Account(id, 'C', name, 0, openDate, pwd), credit(creditAmount), repaymentDay(repDay), lastInterestUpdate(openDate) {}
+CreditAccount::CreditAccount(int id, char, const std::string &name, double creditAmount, int repDay, const Date &openDate, int pwd, bool isShared)
+    : Account(id, 'C', name, 0, openDate, pwd, isShared), credit(creditAmount), repaymentDay(repDay), lastInterestUpdate(openDate) {}
 
 double CreditAccount::getCashAdvanceDebtInternal() const {
     double cashDebt = 0;

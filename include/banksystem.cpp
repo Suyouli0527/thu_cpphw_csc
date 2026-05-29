@@ -47,11 +47,10 @@ Account* BankSystem::findAccount(int id) const {
 }
 
 bool BankSystem::ownsAccount(int id) const {
-    User* user = findUser(currentUserName);
-    if (!user) return false;
-    const auto &ids = user->getAccountIDs();
-    for (int aid : ids) {
-        if (aid == id) return true;
+    Account* acc = findAccount(id);
+    if (!acc) return false;
+    for (const auto &o : acc->getOwners()) {
+        if (o == currentUserName) return true;
     }
     return false;
 }
@@ -83,8 +82,13 @@ void BankSystem::updateAllAccountsInterest(const Date &newDate) {
 }
 
 void BankSystem::removeAccount(int id) {
-    User* user = findUser(currentUserName);
-    if (user) user->removeAccountID(id);
+    Account* acc = findAccount(id);
+    if (acc) {
+        for (const auto &ownerName : acc->getOwners()) {
+            User* owner = findUser(ownerName);
+            if (owner) owner->removeAccountID(id);
+        }
+    }
     for (auto it = accounts.begin(); it != accounts.end(); ++it) {
         if ((*it)->getId() == id) {
             delete *it;
@@ -101,6 +105,14 @@ void BankSystem::printAccountInfo(int id) const {
               << acc->getType() << " "
               << acc->getName() << " "
               << Tools::formatAmount(acc->getBalance());
+    if (acc->isShared()) {
+        std::cout << " 1";
+        for (const auto &o : acc->getOwners()) {
+            std::cout << " " << o;
+        }
+    } else {
+        std::cout << " 0";
+    }
     if (acc->getType() == 'C') {
         const CreditAccount* creditAcc = static_cast<const CreditAccount*>(acc);
         std::cout << " " << Tools::formatAmount(creditAcc->getCredit())
@@ -126,7 +138,7 @@ void BankSystem::printAccountInfo(int id) const {
     std::cout << std::endl;
 }
 
-void BankSystem::openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay, int accountPassword) {
+void BankSystem::openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay, int accountPassword, bool shared) {
     if (id <= 0) { printFailure(); return; }
     if (findAccount(id) != nullptr) { printFailure(); return; }
     if (type != 'S' && type != 'C') { printFailure(); return; }
@@ -137,10 +149,11 @@ void BankSystem::openAccount(int id, char type, const std::string &accountName, 
 
     Account* newAccount = nullptr;
     if (type == 'S') {
-        newAccount = new SavingAccount(id, type, accountName, balance, currentDate, accountPassword);
+        newAccount = new SavingAccount(id, type, accountName, balance, currentDate, accountPassword, shared);
     } else {
-        newAccount = new CreditAccount(id, type, accountName, balance, repaymentDay, currentDate, accountPassword);
+        newAccount = new CreditAccount(id, type, accountName, balance, repaymentDay, currentDate, accountPassword, shared);
     }
+    newAccount->addOwner(currentUserName);
     accounts.push_back(newAccount);
     User* user = findUser(currentUserName);
     if (user) user->addAccountID(id);
@@ -154,6 +167,35 @@ void BankSystem::closeAccount(int id, int accountPassword) {
     if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
     if (acc->getBalance() != 0) { printFailure(); return; }
     removeAccount(id);
+    printSuccess();
+    logRecords.push_back(m_currentCommand);
+}
+
+void BankSystem::addOwner(int id, const std::string &userName) {
+    if (!isAdmin()) { printFailure(); return; }
+    Account* acc = findAccount(id);
+    if (!acc) { printFailure(); return; }
+    if (!acc->isShared()) { printFailure(); return; }
+    User* targetUser = findUser(userName);
+    if (!targetUser) { printFailure(); return; }
+    size_t before = acc->getOwners().size();
+    acc->addOwner(userName);
+    if (acc->getOwners().size() == before) { printFailure(); return; }
+    targetUser->addAccountID(id);
+    printSuccess();
+    logRecords.push_back(m_currentCommand);
+}
+
+void BankSystem::removeOwner(int id, const std::string &userName) {
+    if (!isAdmin()) { printFailure(); return; }
+    Account* acc = findAccount(id);
+    if (!acc) { printFailure(); return; }
+    if (!acc->isShared()) { printFailure(); return; }
+    size_t before = acc->getOwners().size();
+    acc->removeOwner(userName);
+    if (acc->getOwners().size() == before) { printFailure(); return; }
+    User* targetUser = findUser(userName);
+    if (targetUser) targetUser->removeAccountID(id);
     printSuccess();
     logRecords.push_back(m_currentCommand);
 }
@@ -438,10 +480,10 @@ void BankSystem::rollback(int n) {
         if (action == "OPEN") {
             int id; char type; std::string name; double balance;
             iss >> id >> type >> name >> balance;
-            int repDay = 0, accPwd = 0;
+            int repDay = 0, accPwd = 0, sharedInt = 0;
             if (type == 'C') { iss >> repDay; }
-            iss >> accPwd;
-            openAccount(id, type, name, balance, repDay, accPwd);
+            iss >> accPwd >> sharedInt;
+            openAccount(id, type, name, balance, repDay, accPwd, sharedInt != 0);
         } else if (action == "CLOSE") {
             int id, accPwd; iss >> id >> accPwd;
             closeAccount(id, accPwd);
@@ -465,6 +507,14 @@ void BankSystem::rollback(int n) {
             int id, oldPwd, newPwd;
             iss >> id >> oldPwd >> newPwd;
             changeAccountPassword(id, oldPwd, newPwd);
+        } else if (action == "ADD_OWNER") {
+            int id; std::string userName;
+            iss >> id >> userName;
+            addOwner(id, userName);
+        } else if (action == "REMOVE_OWNER") {
+            int id; std::string userName;
+            iss >> id >> userName;
+            removeOwner(id, userName);
         } else if (action == "DEPOSIT") {
             int id, accPwd; double amount;
             iss >> id >> amount >> accPwd;
@@ -560,10 +610,10 @@ void BankSystem::resume(const std::string &filename) {
         if (action == "OPEN") {
             int id; char type; std::string name; double balance;
             iss >> id >> type >> name >> balance;
-            int repDay = 0, accPwd = 0;
+            int repDay = 0, accPwd = 0, sharedInt = 0;
             if (type == 'C') { iss >> repDay; }
-            iss >> accPwd;
-            openAccount(id, type, name, balance, repDay, accPwd);
+            iss >> accPwd >> sharedInt;
+            openAccount(id, type, name, balance, repDay, accPwd, sharedInt != 0);
         } else if (action == "CLOSE") {
             int id, accPwd; iss >> id >> accPwd;
             closeAccount(id, accPwd);
@@ -586,10 +636,43 @@ void BankSystem::resume(const std::string &filename) {
             int id, oldPwd, newPwd;
             iss >> id >> oldPwd >> newPwd;
             changeAccountPassword(id, oldPwd, newPwd);
+        } else if (action == "ADD_OWNER") {
+            int id; std::string userName;
+            iss >> id >> userName;
+            addOwner(id, userName);
+        } else if (action == "REMOVE_OWNER") {
+            int id; std::string userName;
+            iss >> id >> userName;
+            removeOwner(id, userName);
         } else if (action == "DEPOSIT") {
-            int days; iss >> days;
-            addDays(days);
-        } else if (action == "SET_DATE") {
+            int id, accPwd; double amount;
+            iss >> id >> amount >> accPwd;
+            deposit(id, amount, accPwd);
+        } else if (action == "WITHDRAW") {
+            int id, accPwd; double amount;
+            iss >> id >> amount >> accPwd;
+            withdraw(id, amount, accPwd);
+        } else if (action == "TRANSFER") {
+            int srcId, dstId, accPwd; double amount;
+            iss >> srcId >> dstId >> amount >> accPwd;
+            transfer(srcId, dstId, amount, accPwd);
+        } else if (action == "FIXED_DEPOSIT") {
+            int id, accPwd; double amount; int months;
+            iss >> id >> amount >> months >> accPwd;
+            fixedDeposit(id, amount, months, accPwd);
+        } else if (action == "FIXED_WITHDRAW") {
+            int id, accPwd; double amount;
+            iss >> id >> amount >> accPwd;
+            fixedWithdraw(id, amount, accPwd);
+        } else if (action == "CONSUME") {
+            int id, accPwd; double amount;
+            iss >> id >> amount >> accPwd;
+            consume(id, amount, accPwd);
+        } else if (action == "CASH_ADVANCE") {
+            int id, accPwd; double amount;
+            iss >> id >> amount >> accPwd;
+            cashAdvance(id, amount, accPwd);
+        } else if (action == "ADD_DAY") {
             int y, m, d; iss >> y >> m >> d;
             setDate(y, m, d);
         } else if (action == "SWITCH") {

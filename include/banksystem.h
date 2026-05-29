@@ -33,8 +33,10 @@ public:
     BankSystem(const BankSystem&) = delete;
     BankSystem& operator=(const BankSystem&) = delete;
 
-    void openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay, int accountPassword);
+    void openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay, int accountPassword, bool shared);
     void closeAccount(int id, int accountPassword);
+    void addOwner(int id, const std::string &userName);
+    void removeOwner(int id, const std::string &userName);
     void modifyName(int id, const std::string &username, int accountPassword);
     void modifyCredit(int id, double newCredit, int accountPassword);
     void changeUserPassword(const std::string &oldPassword, const std::string &newPassword);
