@@ -1,8 +1,8 @@
 #include "account.h"
 
-Account::Account(int id, char type, const std::string &name, double balance, const Date &openDate)
+Account::Account(int id, char type, const std::string &name, double balance, const Date &openDate, int pwd)
     : id(id), name(name), type(type), balance(balance), openDate(openDate),
-      lastInterestDate(openDate), interest(0.0) {}
+      lastInterestDate(openDate), interest(0.0), accountPassword(pwd) {}
 
 bool Account::modifyName(const std::string &newName) {
     name = newName;
@@ -27,8 +27,8 @@ void Account::updateInterest(const Date &targetDate) {
     lastInterestDate = targetDate;
 }
 
-SavingAccount::SavingAccount(int id, char, const std::string &name, double balance, const Date &openDate)
-    : Account(id, 'S', name, balance, openDate) {}
+SavingAccount::SavingAccount(int id, char, const std::string &name, double balance, const Date &openDate, int pwd)
+    : Account(id, 'S', name, balance, openDate, pwd) {}
 
 bool SavingAccount::deposit(const Date &, double amount) {
     if (amount < 0) return false;
@@ -89,8 +89,8 @@ void SavingAccount::updateFixedDeposits(const Date &date) {
     }
 }
 
-CreditAccount::CreditAccount(int id, char, const std::string &name, double creditAmount, int repDay, const Date &openDate)
-    : Account(id, 'C', name, 0, openDate), credit(creditAmount), repaymentDay(repDay), lastInterestUpdate(openDate) {}
+CreditAccount::CreditAccount(int id, char, const std::string &name, double creditAmount, int repDay, const Date &openDate, int pwd)
+    : Account(id, 'C', name, 0, openDate, pwd), credit(creditAmount), repaymentDay(repDay), lastInterestUpdate(openDate) {}
 
 double CreditAccount::getCashAdvanceDebtInternal() const {
     double cashDebt = 0;

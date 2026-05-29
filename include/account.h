@@ -13,9 +13,10 @@ protected:
     Date openDate;
     Date lastInterestDate;
     double interest;
+    int accountPassword;
 
 public:
-    Account(int id, char type, const std::string &name, double balance, const Date &openDate);
+    Account(int id, char type, const std::string &name, double balance, const Date &openDate, int pwd);
     virtual ~Account() = default;
 
     void updateInterest(const Date &targetDate);
@@ -29,6 +30,13 @@ public:
     std::string getName() const { return name; }
     double getBalance() const { return balance; }
     Date getOpenDate() const { return openDate; }
+    bool verifyAccountPassword(int pwd) const { return accountPassword == pwd; }
+    bool changeAccountPassword(int oldPwd, int newPwd) {
+        if (accountPassword != oldPwd) return false;
+        if (newPwd < 100000 || newPwd > 999999) return false;
+        accountPassword = newPwd;
+        return true;
+    }
 
     bool modifyName(const std::string &newName);
 };
@@ -45,7 +53,7 @@ class SavingAccount : public Account {
     std::vector<FixedDeposit> fixedDeposits;
 
 public:
-    SavingAccount(int id, char type, const std::string &name, double balance, const Date &openDate);
+    SavingAccount(int id, char type, const std::string &name, double balance, const Date &openDate, int pwd);
     bool deposit(const Date &date, double amount) override;
     bool withdraw(const Date &date, double amount) override;
 
@@ -76,7 +84,7 @@ private:
     bool isWithinGracePeriod(const Date &txnDate, const Date &checkDate) const;
 
 public:
-    CreditAccount(int id, char type, const std::string &name, double creditAmount, int repDay, const Date &openDate);
+    CreditAccount(int id, char type, const std::string &name, double creditAmount, int repDay, const Date &openDate, int pwd);
     bool deposit(const Date &date, double amount) override;
     bool withdraw(const Date &date, double amount) override;
     bool consume(const Date &date, double amount);

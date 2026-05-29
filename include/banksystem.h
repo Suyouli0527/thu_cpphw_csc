@@ -33,30 +33,32 @@ public:
     BankSystem(const BankSystem&) = delete;
     BankSystem& operator=(const BankSystem&) = delete;
 
-    void openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay = 0);
-    void closeAccount(int id);
-    void modifyName(int id, const std::string &username);
-    void modifyCredit(int id, double newCredit);
-    void query(int id) const;
+    void openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay, int accountPassword);
+    void closeAccount(int id, int accountPassword);
+    void modifyName(int id, const std::string &username, int accountPassword);
+    void modifyCredit(int id, double newCredit, int accountPassword);
+    void changeUserPassword(const std::string &oldPassword, const std::string &newPassword);
+    void changeAccountPassword(int id, int oldPassword, int newPassword);
+    void query(int id, int accountPassword) const;
     void queryAllAccounts() const;
 
-    void deposit(int id, double amount);
-    void withdraw(int id, double amount);
-    void transfer(int srcId, int dstId, double amount);
-    void fixedDeposit(int id, double amount, int months);
-    void fixedWithdraw(int id, double amount);
-    void consume(int id, double amount);
-    void cashAdvance(int id, double amount);
+    void deposit(int id, double amount, int accountPassword);
+    void withdraw(int id, double amount, int accountPassword);
+    void transfer(int srcId, int dstId, double amount, int srcAccountPassword);
+    void fixedDeposit(int id, double amount, int months, int accountPassword);
+    void fixedWithdraw(int id, double amount, int accountPassword);
+    void consume(int id, double amount, int accountPassword);
+    void cashAdvance(int id, double amount, int accountPassword);
 
     void showDate() const;
     void addDays(int days);
     void setDate(int year, int month, int day);
 
-    void createUser(const std::string &username);
+    void createUser(const std::string &username, const std::string &password);
     void deleteUser(const std::string &username);
     void queryUser(const std::string &username) const;
     void queryAllUser() const;
-    void switchUser(const std::string &username);
+    void switchUser(const std::string &username, const std::string &password);
     void whoami() const;
 
     void showLog() const;

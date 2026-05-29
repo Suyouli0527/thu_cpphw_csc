@@ -36,70 +36,82 @@ public:
             if (type == 'C') {
                 if (!(iss >> repaymentDay)) { Tools::printFailure(); return; }
             }
-            system.openAccount(id, type, name, balance, repaymentDay);
+            int accountPassword;
+            if (!(iss >> accountPassword)) { Tools::printFailure(); return; }
+            system.openAccount(id, type, name, balance, repaymentDay, accountPassword);
         }
         else if (cmd == "CLOSE") {
-            int id;
-            if (!(iss >> id)) { Tools::printFailure(); return; }
-            system.closeAccount(id);
+            int id, accountPassword;
+            if (!(iss >> id >> accountPassword)) { Tools::printFailure(); return; }
+            system.closeAccount(id, accountPassword);
         }
         else if (cmd == "MODIFY") {
             std::string subCmd;
             if (!(iss >> subCmd)) { Tools::printFailure(); return; }
             if (subCmd == "NAME") {
-                int id; std::string newName;
-                if (!(iss >> id >> newName)) { Tools::printFailure(); return; }
-                system.modifyName(id, newName);
+                int id, accountPassword; std::string newName;
+                if (!(iss >> id >> newName >> accountPassword)) { Tools::printFailure(); return; }
+                system.modifyName(id, newName, accountPassword);
             } else if (subCmd == "CREDIT") {
-                int id; double newCredit;
-                if (!(iss >> id >> newCredit)) { Tools::printFailure(); return; }
-                system.modifyCredit(id, newCredit);
+                int id, accountPassword; double newCredit;
+                if (!(iss >> id >> newCredit >> accountPassword)) { Tools::printFailure(); return; }
+                system.modifyCredit(id, newCredit, accountPassword);
             } else {
                 Tools::printFailure();
             }
         }
+        else if (cmd == "MODIFY_USERPASSWORD") {
+            std::string oldPassword, newPassword;
+            if (!(iss >> oldPassword >> newPassword)) { Tools::printFailure(); return; }
+            system.changeUserPassword(oldPassword, newPassword);
+        }
+        else if (cmd == "MODIFY_ACCOUNTPASSWORD") {
+            int id, oldPassword, newPassword;
+            if (!(iss >> id >> oldPassword >> newPassword)) { Tools::printFailure(); return; }
+            system.changeAccountPassword(id, oldPassword, newPassword);
+        }
         else if (cmd == "QUERY") {
-            int id;
-            if (!(iss >> id)) { Tools::printFailure(); return; }
-            system.query(id);
+            int id, accountPassword;
+            if (!(iss >> id >> accountPassword)) { Tools::printFailure(); return; }
+            system.query(id, accountPassword);
         }
         else if (cmd == "QUERYALL") {
             system.queryAllAccounts();
         }
         else if (cmd == "DEPOSIT") {
-            int id; double amount;
-            if (!(iss >> id >> amount)) { Tools::printFailure(); return; }
-            system.deposit(id, amount);
+            int id, accountPassword; double amount;
+            if (!(iss >> id >> amount >> accountPassword)) { Tools::printFailure(); return; }
+            system.deposit(id, amount, accountPassword);
         }
         else if (cmd == "WITHDRAW") {
-            int id; double amount;
-            if (!(iss >> id >> amount)) { Tools::printFailure(); return; }
-            system.withdraw(id, amount);
+            int id, accountPassword; double amount;
+            if (!(iss >> id >> amount >> accountPassword)) { Tools::printFailure(); return; }
+            system.withdraw(id, amount, accountPassword);
         }
         else if (cmd == "CONSUME") {
-            int id; double amount;
-            if (!(iss >> id >> amount)) { Tools::printFailure(); return; }
-            system.consume(id, amount);
+            int id, accountPassword; double amount;
+            if (!(iss >> id >> amount >> accountPassword)) { Tools::printFailure(); return; }
+            system.consume(id, amount, accountPassword);
         }
         else if (cmd == "CASH_ADVANCE") {
-            int id; double amount;
-            if (!(iss >> id >> amount)) { Tools::printFailure(); return; }
-            system.cashAdvance(id, amount);
+            int id, accountPassword; double amount;
+            if (!(iss >> id >> amount >> accountPassword)) { Tools::printFailure(); return; }
+            system.cashAdvance(id, amount, accountPassword);
         }
         else if (cmd == "TRANSFER") {
-            int srcId, dstId; double amount;
-            if (!(iss >> srcId >> dstId >> amount)) { Tools::printFailure(); return; }
-            system.transfer(srcId, dstId, amount);
+            int srcId, dstId, accountPassword; double amount;
+            if (!(iss >> srcId >> dstId >> amount >> accountPassword)) { Tools::printFailure(); return; }
+            system.transfer(srcId, dstId, amount, accountPassword);
         }
         else if (cmd == "FIXED_DEPOSIT") {
-            int id; double amount; int months;
-            if (!(iss >> id >> amount >> months)) { Tools::printFailure(); return; }
-            system.fixedDeposit(id, amount, months);
+            int id, accountPassword; double amount; int months;
+            if (!(iss >> id >> amount >> months >> accountPassword)) { Tools::printFailure(); return; }
+            system.fixedDeposit(id, amount, months, accountPassword);
         }
         else if (cmd == "FIXED_WITHDRAW") {
-            int id; double amount;
-            if (!(iss >> id >> amount)) { Tools::printFailure(); return; }
-            system.fixedWithdraw(id, amount);
+            int id, accountPassword; double amount;
+            if (!(iss >> id >> amount >> accountPassword)) { Tools::printFailure(); return; }
+            system.fixedWithdraw(id, amount, accountPassword);
         }
         else if (cmd == "SHOW_DATE") {
             system.showDate();
@@ -127,9 +139,9 @@ public:
             system.setDate(year, month, day);
         }
         else if (cmd == "CREATE_USER") {
-            std::string username;
-            if (!(iss >> username)) { Tools::printFailure(); return; }
-            system.createUser(username);
+            std::string username, password;
+            if (!(iss >> username >> password)) { Tools::printFailure(); return; }
+            system.createUser(username, password);
         }
         else if (cmd == "DELETE_USER") {
             std::string username;
@@ -145,9 +157,9 @@ public:
             system.queryAllUser();
         }
         else if (cmd == "SWITCH") {
-            std::string username;
-            if (!(iss >> username)) { Tools::printFailure(); return; }
-            system.switchUser(username);
+            std::string username, password;
+            if (!(iss >> username >> password)) { Tools::printFailure(); return; }
+            system.switchUser(username, password);
         }
         else if (cmd == "WHOAMI") {
             system.whoami();

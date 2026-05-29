@@ -5,8 +5,8 @@
 #include <algorithm>
 
 BankSystem::BankSystem() : currentDate(1970, 1, 1), currentUserName("default") {
-    users.emplace_back("admin", UserType::admin);
-    users.emplace_back("default", UserType::normal);
+    users.emplace_back("admin", UserType::admin, "admin");
+    users.emplace_back("default", UserType::normal, "default");
 }
 
 BankSystem::~BankSystem() {
@@ -126,19 +126,20 @@ void BankSystem::printAccountInfo(int id) const {
     std::cout << std::endl;
 }
 
-void BankSystem::openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay) {
+void BankSystem::openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay, int accountPassword) {
     if (id <= 0) { printFailure(); return; }
     if (findAccount(id) != nullptr) { printFailure(); return; }
     if (type != 'S' && type != 'C') { printFailure(); return; }
     if (accountName.empty()) { printFailure(); return; }
     if (balance < 0) { printFailure(); return; }
     if (type == 'C' && (repaymentDay < 1 || repaymentDay > 28)) { printFailure(); return; }
+    if (accountPassword < 100000 || accountPassword > 999999) { printFailure(); return; }
 
     Account* newAccount = nullptr;
     if (type == 'S') {
-        newAccount = new SavingAccount(id, type, accountName, balance, currentDate);
+        newAccount = new SavingAccount(id, type, accountName, balance, currentDate, accountPassword);
     } else {
-        newAccount = new CreditAccount(id, type, accountName, balance, repaymentDay, currentDate);
+        newAccount = new CreditAccount(id, type, accountName, balance, repaymentDay, currentDate, accountPassword);
     }
     accounts.push_back(newAccount);
     User* user = findUser(currentUserName);
@@ -147,27 +148,30 @@ void BankSystem::openAccount(int id, char type, const std::string &accountName, 
     logRecords.push_back(m_currentCommand);
 }
 
-void BankSystem::closeAccount(int id) {
+void BankSystem::closeAccount(int id, int accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
     if (acc->getBalance() != 0) { printFailure(); return; }
     removeAccount(id);
     printSuccess();
     logRecords.push_back(m_currentCommand);
 }
 
-void BankSystem::modifyName(int id, const std::string &username) {
+void BankSystem::modifyName(int id, const std::string &username, int accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
     if (username.empty()) { printFailure(); return; }
     acc->modifyName(username);
     printSuccess();
     logRecords.push_back(m_currentCommand);
 }
 
-void BankSystem::modifyCredit(int id, double newCredit) {
+void BankSystem::modifyCredit(int id, double newCredit, int accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
     if (acc->getType() != 'C') { printFailure(); return; }
     if (newCredit < 0) { printFailure(); return; }
     CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
@@ -176,9 +180,26 @@ void BankSystem::modifyCredit(int id, double newCredit) {
     logRecords.push_back(m_currentCommand);
 }
 
-void BankSystem::query(int id) const {
+void BankSystem::changeUserPassword(const std::string &oldPassword, const std::string &newPassword) {
+    User* user = findUser(currentUserName);
+    if (!user) { printFailure(); return; }
+    if (!user->changePassword(oldPassword, newPassword)) { printFailure(); return; }
+    printSuccess();
+    logRecords.push_back(m_currentCommand);
+}
+
+void BankSystem::changeAccountPassword(int id, int oldPassword, int newPassword) {
     Account* acc = findAccount(id);
     if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (!acc->changeAccountPassword(oldPassword, newPassword)) { printFailure(); return; }
+    printSuccess();
+    logRecords.push_back(m_currentCommand);
+}
+
+void BankSystem::query(int id, int accountPassword) const {
+    Account* acc = findAccount(id);
+    if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
     printAccountInfo(id);
 }
 
@@ -194,9 +215,10 @@ void BankSystem::queryAllAccounts() const {
 }
 
 
-void BankSystem::deposit(int id, double amount) {
+void BankSystem::deposit(int id, double amount, int accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
     if (acc->deposit(currentDate, amount)) {
         printSuccess();
         logRecords.push_back(m_currentCommand);
@@ -205,9 +227,10 @@ void BankSystem::deposit(int id, double amount) {
     }
 }
 
-void BankSystem::withdraw(int id, double amount) {
+void BankSystem::withdraw(int id, double amount, int accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
     if (acc->withdraw(currentDate, amount)) {
         printSuccess();
         logRecords.push_back(m_currentCommand);
@@ -216,21 +239,23 @@ void BankSystem::withdraw(int id, double amount) {
     }
 }
 
-void BankSystem::transfer(int srcId, int dstId, double amount) {
+void BankSystem::transfer(int srcId, int dstId, double amount, int srcAccountPassword) {
     if (srcId == dstId) { printFailure(); return; }
     Account* srcAcc = findAccount(srcId);
     Account* dstAcc = findAccount(dstId);
     if (!srcAcc || !dstAcc) { printFailure(); return; }
     if (!ownsAccount(srcId)) { printFailure(); return; }
+    if (!srcAcc->verifyAccountPassword(srcAccountPassword)) { printFailure(); return; }
     if (!srcAcc->withdraw(currentDate, amount)) { printFailure(); return; }
     dstAcc->deposit(currentDate, amount);
     printSuccess();
     logRecords.push_back(m_currentCommand);
 }
 
-void BankSystem::fixedDeposit(int id, double amount, int months) {
+void BankSystem::fixedDeposit(int id, double amount, int months, int accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
     if (acc->getType() != 'S') { printFailure(); return; }
     SavingAccount* savingAcc = static_cast<SavingAccount*>(acc);
     if (savingAcc->fixedDeposit(currentDate, amount, months)) {
@@ -241,9 +266,10 @@ void BankSystem::fixedDeposit(int id, double amount, int months) {
     }
 }
 
-void BankSystem::fixedWithdraw(int id, double amount) {
+void BankSystem::fixedWithdraw(int id, double amount, int accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
     if (acc->getType() != 'S') { printFailure(); return; }
     SavingAccount* savingAcc = static_cast<SavingAccount*>(acc);
     if (savingAcc->fixedWithdraw(currentDate, amount)) {
@@ -254,9 +280,10 @@ void BankSystem::fixedWithdraw(int id, double amount) {
     }
 }
 
-void BankSystem::consume(int id, double amount) {
+void BankSystem::consume(int id, double amount, int accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
     if (acc->getType() != 'C') { printFailure(); return; }
     CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
     if (creditAcc->consume(currentDate, amount)) {
@@ -267,9 +294,10 @@ void BankSystem::consume(int id, double amount) {
     }
 }
 
-void BankSystem::cashAdvance(int id, double amount) {
+void BankSystem::cashAdvance(int id, double amount, int accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
     if (acc->getType() != 'C') { printFailure(); return; }
     CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
     if (creditAcc->cashAdvance(currentDate, amount)) {
@@ -308,12 +336,13 @@ void BankSystem::setDate(int year, int month, int day) {
 
 // ==================== Multi-User Management ====================
 
-void BankSystem::createUser(const std::string &username) {
+void BankSystem::createUser(const std::string &username, const std::string &password) {
     if (!isAdmin()) { printFailure(); return; }
     if (!isLegalName(username)) { printFailure(); return; }
     if (username == "admin") { printFailure(); return; }
+    if (password.empty()) { printFailure(); return; }
     if (findUser(username)) { printFailure(); return; }
-    users.emplace_back(username, UserType::normal);
+    users.emplace_back(username, UserType::normal, password);
     printSuccess();
     logRecords.push_back(m_currentCommand);
 }
@@ -357,9 +386,10 @@ void BankSystem::queryAllUser() const {
     }
 }
 
-void BankSystem::switchUser(const std::string &username) {
+void BankSystem::switchUser(const std::string &username, const std::string &password) {
     User* user = findUser(username);
     if (!user) { printFailure(); return; }
+    if (!user->verifyPassword(password)) { printFailure(); return; }
     currentUserName = username;
     printSuccess();
     logRecords.push_back(m_currentCommand);
@@ -392,8 +422,8 @@ void BankSystem::rollback(int n) {
 
     clearAccounts();
     users.clear();
-    users.emplace_back("admin", UserType::admin);
-    users.emplace_back("default", UserType::normal);
+    users.emplace_back("admin", UserType::admin, "admin");
+    users.emplace_back("default", UserType::normal, "default");
     currentDate = Date(1970, 1, 1);
     currentUserName = "default";
     logRecords.clear();
@@ -408,52 +438,61 @@ void BankSystem::rollback(int n) {
         if (action == "OPEN") {
             int id; char type; std::string name; double balance;
             iss >> id >> type >> name >> balance;
-            int repDay = 0;
-            if (type == 'C') iss >> repDay;
-            openAccount(id, type, name, balance, repDay);
+            int repDay = 0, accPwd = 0;
+            if (type == 'C') { iss >> repDay; }
+            iss >> accPwd;
+            openAccount(id, type, name, balance, repDay, accPwd);
         } else if (action == "CLOSE") {
-            int id; iss >> id;
-            closeAccount(id);
+            int id, accPwd; iss >> id >> accPwd;
+            closeAccount(id, accPwd);
         } else if (action == "MODIFY") {
             std::string subAction;
             iss >> subAction;
             if (subAction == "NAME") {
-                int id; std::string name;
-                iss >> id >> name;
-                modifyName(id, name);
+                int id, accPwd; std::string name;
+                iss >> id >> name >> accPwd;
+                modifyName(id, name, accPwd);
             } else if (subAction == "CREDIT") {
-                int id; double credit;
-                iss >> id >> credit;
-                modifyCredit(id, credit);
+                int id, accPwd; double credit;
+                iss >> id >> credit >> accPwd;
+                modifyCredit(id, credit, accPwd);
             }
+        } else if (action == "MODIFY_USERPASSWORD") {
+            std::string oldPwd, newPwd;
+            iss >> oldPwd >> newPwd;
+            changeUserPassword(oldPwd, newPwd);
+        } else if (action == "MODIFY_ACCOUNTPASSWORD") {
+            int id, oldPwd, newPwd;
+            iss >> id >> oldPwd >> newPwd;
+            changeAccountPassword(id, oldPwd, newPwd);
         } else if (action == "DEPOSIT") {
-            int id; double amount;
-            iss >> id >> amount;
-            deposit(id, amount);
+            int id, accPwd; double amount;
+            iss >> id >> amount >> accPwd;
+            deposit(id, amount, accPwd);
         } else if (action == "WITHDRAW") {
-            int id; double amount;
-            iss >> id >> amount;
-            withdraw(id, amount);
+            int id, accPwd; double amount;
+            iss >> id >> amount >> accPwd;
+            withdraw(id, amount, accPwd);
         } else if (action == "TRANSFER") {
-            int srcId, dstId; double amount;
-            iss >> srcId >> dstId >> amount;
-            transfer(srcId, dstId, amount);
+            int srcId, dstId, accPwd; double amount;
+            iss >> srcId >> dstId >> amount >> accPwd;
+            transfer(srcId, dstId, amount, accPwd);
         } else if (action == "FIXED_DEPOSIT") {
-            int id; double amount; int months;
-            iss >> id >> amount >> months;
-            fixedDeposit(id, amount, months);
+            int id, accPwd; double amount; int months;
+            iss >> id >> amount >> months >> accPwd;
+            fixedDeposit(id, amount, months, accPwd);
         } else if (action == "FIXED_WITHDRAW") {
-            int id; double amount;
-            iss >> id >> amount;
-            fixedWithdraw(id, amount);
+            int id, accPwd; double amount;
+            iss >> id >> amount >> accPwd;
+            fixedWithdraw(id, amount, accPwd);
         } else if (action == "CONSUME") {
-            int id; double amount;
-            iss >> id >> amount;
-            consume(id, amount);
+            int id, accPwd; double amount;
+            iss >> id >> amount >> accPwd;
+            consume(id, amount, accPwd);
         } else if (action == "CASH_ADVANCE") {
-            int id; double amount;
-            iss >> id >> amount;
-            cashAdvance(id, amount);
+            int id, accPwd; double amount;
+            iss >> id >> amount >> accPwd;
+            cashAdvance(id, amount, accPwd);
         } else if (action == "ADD_DAY") {
             int days; iss >> days;
             addDays(days);
@@ -461,11 +500,11 @@ void BankSystem::rollback(int n) {
             int y, m, d; iss >> y >> m >> d;
             setDate(y, m, d);
         } else if (action == "SWITCH") {
-            std::string username; iss >> username;
-            switchUser(username);
+            std::string username, pwd; iss >> username >> pwd;
+            switchUser(username, pwd);
         } else if (action == "CREATE_USER") {
-            std::string username; iss >> username;
-            createUser(username);
+            std::string username, pwd; iss >> username >> pwd;
+            createUser(username, pwd);
         } else if (action == "DELETE_USER") {
             std::string username; iss >> username;
             deleteUser(username);
@@ -475,8 +514,6 @@ void BankSystem::rollback(int n) {
 
     printSuccess();
 }
-
-
 
 void BankSystem::saveLog(const std::string &filename) const {
     std::ofstream file(filename);
@@ -523,63 +560,44 @@ void BankSystem::resume(const std::string &filename) {
         if (action == "OPEN") {
             int id; char type; std::string name; double balance;
             iss >> id >> type >> name >> balance;
-            int repDay = 0;
-            if (type == 'C') iss >> repDay;
-            openAccount(id, type, name, balance, repDay);
+            int repDay = 0, accPwd = 0;
+            if (type == 'C') { iss >> repDay; }
+            iss >> accPwd;
+            openAccount(id, type, name, balance, repDay, accPwd);
         } else if (action == "CLOSE") {
-            int id; iss >> id;
-            closeAccount(id);
+            int id, accPwd; iss >> id >> accPwd;
+            closeAccount(id, accPwd);
         } else if (action == "MODIFY") {
             std::string subAction; iss >> subAction;
             if (subAction == "NAME") {
-                int id; std::string name;
-                iss >> id >> name;
-                modifyName(id, name);
+                int id, accPwd; std::string name;
+                iss >> id >> name >> accPwd;
+                modifyName(id, name, accPwd);
             } else if (subAction == "CREDIT") {
-                int id; double credit;
-                iss >> id >> credit;
-                modifyCredit(id, credit);
+                int id, accPwd; double credit;
+                iss >> id >> credit >> accPwd;
+                modifyCredit(id, credit, accPwd);
             }
+        } else if (action == "MODIFY_USERPASSWORD") {
+            std::string oldPwd, newPwd;
+            iss >> oldPwd >> newPwd;
+            changeUserPassword(oldPwd, newPwd);
+        } else if (action == "MODIFY_ACCOUNTPASSWORD") {
+            int id, oldPwd, newPwd;
+            iss >> id >> oldPwd >> newPwd;
+            changeAccountPassword(id, oldPwd, newPwd);
         } else if (action == "DEPOSIT") {
-            int id; double amount;
-            iss >> id >> amount;
-            deposit(id, amount);
-        } else if (action == "WITHDRAW") {
-            int id; double amount;
-            iss >> id >> amount;
-            withdraw(id, amount);
-        } else if (action == "TRANSFER") {
-            int srcId, dstId; double amount;
-            iss >> srcId >> dstId >> amount;
-            transfer(srcId, dstId, amount);
-        } else if (action == "FIXED_DEPOSIT") {
-            int id; double amount; int months;
-            iss >> id >> amount >> months;
-            fixedDeposit(id, amount, months);
-        } else if (action == "FIXED_WITHDRAW") {
-            int id; double amount;
-            iss >> id >> amount;
-            fixedWithdraw(id, amount);
-        } else if (action == "CONSUME") {
-            int id; double amount;
-            iss >> id >> amount;
-            consume(id, amount);
-        } else if (action == "CASH_ADVANCE") {
-            int id; double amount;
-            iss >> id >> amount;
-            cashAdvance(id, amount);
-        } else if (action == "ADD_DAY") {
             int days; iss >> days;
             addDays(days);
         } else if (action == "SET_DATE") {
             int y, m, d; iss >> y >> m >> d;
             setDate(y, m, d);
         } else if (action == "SWITCH") {
-            std::string username; iss >> username;
-            switchUser(username);
+            std::string username, pwd; iss >> username >> pwd;
+            switchUser(username, pwd);
         } else if (action == "CREATE_USER") {
-            std::string username; iss >> username;
-            createUser(username);
+            std::string username, pwd; iss >> username >> pwd;
+            createUser(username, pwd);
         } else if (action == "DELETE_USER") {
             std::string username; iss >> username;
             deleteUser(username);
