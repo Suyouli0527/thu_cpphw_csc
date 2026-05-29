@@ -2,9 +2,10 @@
 #include "date.h"
 #include "user.h"
 #include "account.h"
-#include "tools.h"
 #include <vector>
 #include <string>
+#include <iomanip>
+#include <sstream>
 
 class BankSystem {
 private:
@@ -14,6 +15,7 @@ private:
     std::vector<Account*> accounts;
     std::vector<std::string> logRecords;
     bool m_silent = false;
+    mutable bool m_lastResult = true;
     std::string m_currentCommand;
 
     Account* findAccount(int id) const;
@@ -74,4 +76,13 @@ public:
     bool isInitialState() const { return logRecords.empty(); }
     void setSilent(bool s) { m_silent = s; }
     void setRawCommand(const std::string &cmd) { m_currentCommand = cmd; }
+    std::string getCurrentUserName() const { return currentUserName; }
+    Account* findAccountForTest(int id) const { return findAccount(id); }
+    bool lastResult() const { return m_lastResult; }
+    void resetResult() { m_lastResult = true; }
+    static std::string formatAmount(double amount) {
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(2) << amount;
+        return oss.str();
+    }
 };

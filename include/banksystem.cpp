@@ -1,4 +1,5 @@
 #include "banksystem.h"
+#include <iostream>
 #include <iomanip>
 #include <fstream>
 #include <sstream>
@@ -21,11 +22,11 @@ void BankSystem::clearAccounts() {
 }
 
 void BankSystem::printSuccess() const {
-    if (!m_silent) Tools::printSuccess();
+    m_lastResult = true;
 }
 
 void BankSystem::printFailure() const {
-    if (!m_silent) Tools::printFailure();
+    m_lastResult = false;
 }
 
 User* BankSystem::findUser(const std::string &name) const {
@@ -104,7 +105,7 @@ void BankSystem::printAccountInfo(int id) const {
     std::cout << acc->getId() << " "
               << acc->getType() << " "
               << acc->getName() << " "
-              << Tools::formatAmount(acc->getBalance());
+              << BankSystem::formatAmount(acc->getBalance());
     if (acc->isShared()) {
         std::cout << " 1";
         for (const auto &o : acc->getOwners()) {
@@ -115,17 +116,17 @@ void BankSystem::printAccountInfo(int id) const {
     }
     if (acc->getType() == 'C') {
         const CreditAccount* creditAcc = static_cast<const CreditAccount*>(acc);
-        std::cout << " " << Tools::formatAmount(creditAcc->getCredit())
+        std::cout << " " << BankSystem::formatAmount(creditAcc->getCredit())
                   << " " << creditAcc->getRepaymentDay()
-                  << " " << Tools::formatAmount(creditAcc->getCashAdvanceDebt())
-                  << " " << Tools::formatAmount(creditAcc->getConsumeDebt());
+                  << " " << BankSystem::formatAmount(creditAcc->getCashAdvanceDebt())
+                  << " " << BankSystem::formatAmount(creditAcc->getConsumeDebt());
     }
     if (acc->getType() == 'S') {
         const SavingAccount* savingAcc = static_cast<const SavingAccount*>(acc);
         std::cout << " " << savingAcc->getFixedDepositCount();
         for (const auto& fd : savingAcc->getFixedDeposits()) {
             std::cout << " " << fd.months << " "
-                      << Tools::formatAmount(fd.principal) << " "
+                      << BankSystem::formatAmount(fd.principal) << " "
                       << fd.depositDate.getYear() << "-"
                       << fd.depositDate.getMonth() << "-"
                       << fd.depositDate.getDay() << " "
