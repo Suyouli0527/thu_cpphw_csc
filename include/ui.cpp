@@ -105,11 +105,19 @@ void BankUI::feedback(const std::string &action, bool ok) const {
     std::cout << std::endl;
 }
 
-static const std::set<std::string> cardAllowed = {
-    "DEPOSIT", "WITHDRAW", "QUERY", "CLOSE", "MODIFY",
-    "TRANSFER", "FIXED_DEPOSIT", "FIXED_WITHDRAW",
-    "CONSUME", "CASH_ADVANCE"
-};
+static bool isCardAllowed(const std::string &action) {
+    return action == "DEPOSIT" || action == "WITHDRAW" || action == "QUERY"
+        || action == "CLOSE" || action == "MODIFY" || action == "TRANSFER"
+        || action == "FIXED_DEPOSIT" || action == "FIXED_WITHDRAW"
+        || action == "CONSUME" || action == "CASH_ADVANCE";
+}
+
+static bool isAdminCommand(const std::string &action) {
+    return action == "CREATE_USER" || action == "DELETE_USER"
+        || action == "QUERY_USER" || action == "QUERY_USERLIST"
+        || action == "ADD_OWNER" || action == "REMOVE_OWNER"
+        || action == "MODIFY_SHARED";
+}
 
 bool BankUI::executeCommand(const std::string &input) {
     std::istringstream iss(input);
@@ -122,7 +130,7 @@ bool BankUI::executeCommand(const std::string &input) {
     std::string commandToExecute;
 
     if (currentMode == Mode::CARD && insertedCardId != -1) {
-        if (cardAllowed.find(action) == cardAllowed.end()) {
+        if (!isCardAllowed(action)) {
             std::cout << " [插卡模式下不支持此命令]" << std::endl;
             return true;
         }
@@ -133,6 +141,10 @@ bool BankUI::executeCommand(const std::string &input) {
         if (!rest.empty()) rewritten << rest;
         commandToExecute = rewritten.str();
     } else {
+        if (currentMode != Mode::ADMIN && isAdminCommand(action)) {
+            std::cout << " [无权限: 需要管理员权限]" << std::endl;
+            return true;
+        }
         commandToExecute = input;
     }
 

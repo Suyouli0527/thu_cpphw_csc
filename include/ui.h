@@ -2,7 +2,6 @@
 #include "banksystem.h"
 #include "command.h"
 #include <string>
-#include <set>
 
 class BankUI {
 private:
