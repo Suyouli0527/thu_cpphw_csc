@@ -191,17 +191,6 @@ double CreditAccount::getConsumeDebt() const {
 
 bool CreditAccount::deposit(const Date &date, double amount) {
     if (amount < 0) return false;
-    double cashDebt = getCashAdvanceDebtInternal();
-    double consumeDebt = getConsumeDebtInternal();
-    double remaining = amount;
-    if (cashDebt > 0 && remaining > 0) {
-        double repay = remaining < cashDebt ? remaining : cashDebt;
-        remaining -= repay;
-    }
-    if (consumeDebt > 0 && remaining > 0) {
-        double repay = remaining < consumeDebt ? remaining : consumeDebt;
-        remaining -= repay;
-    }
     balance += amount;
     transactions.push_back({-amount, 'R', date});
     return true;
@@ -226,8 +215,6 @@ bool CreditAccount::cashAdvance(const Date &date, double amount) {
 }
 
 void CreditAccount::updateCreditInterest(const Date &targetDate) {
-    double cashDebt = getCashAdvanceDebtInternal();
-    double consumeDebt = getConsumeDebtInternal();
     Date current = lastInterestUpdate;
 
     while (current - targetDate < 0) {
@@ -235,17 +222,17 @@ void CreditAccount::updateCreditInterest(const Date &targetDate) {
         next.addDays(1);
         double dailyInterest = 0;
 
-        // 取现利息：从交易次日到还款日或当前
+
         for (const auto &txn : transactions) {
             if (txn.txnType != 'C') continue;
             Date interestStart = txn.date;
             interestStart.addDays(1);
-            if (next - interestStart > 0) {
+            if (next - interestStart >= 0) {
                 dailyInterest += txn.amount * InterestCalculator::debtRate;
             }
         }
 
-        // 消费利息：已过免息期的部分
+
         for (const auto &txn : transactions) {
             if (txn.txnType != 'P') continue;
             if (!isWithinGracePeriod(txn.date, next)) {
@@ -263,3 +250,4 @@ bool CreditAccount::modifyCredit(double newCredit) {
     credit = newCredit;
     return true;
 }
+

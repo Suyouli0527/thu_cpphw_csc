@@ -71,7 +71,7 @@ void BankUI::executeAndFeedback(const std::string &commandStr) {
 
 void BankUI::feedback(const std::string &action, bool ok) const {
     std::string upper = action;
-    for (size_t i = 0; i < upper.size(); i++) upper[i] = toupper(upper[i]);
+    for (auto i = 0; i < upper.size(); i++) upper[i] = toupper(upper[i]);
     if (!ok) {
         if (upper == "OPEN") std::cout << " [开户失败: 参数错误或ID重复]";
         else if (upper == "CLOSE") std::cout << " [销户失败]";
@@ -495,16 +495,19 @@ void BankUI::handleModify() {
         if (currentMode == Mode::ADMIN) {
             std::cout << " [1] 修改账户名\n [2] 修改信用额度\n [3] 修改共享状态\n [4] 修改账户密码\n [0] 返回\n";
         } else {
-            std::cout << " [1] 修改账户名\n [2] 修改信用额度\n [3] 修改账户密码\n [0] 返回\n";
+            std::cout << " [1] 修改账户名\n [2] 修改账户密码\n [0] 返回\n";
         }
         std::string choice = promptLine("请选择: ");
         if (choice == "0") return;
         std::string cmdStr;
         if (choice == "1") cmdStr = collectModifyName();
-        else if (choice == "2") cmdStr = collectModifyCredit();
+        else if (choice == "2") {
+            if (currentMode == Mode::ADMIN) cmdStr = collectModifyCredit();
+            else cmdStr = collectModifyAccountPassword();
+        }
         else if (choice == "3") {
             if (currentMode == Mode::ADMIN) cmdStr = collectModifyShared();
-            else cmdStr = collectModifyAccountPassword();
+            else { std::cout << " [无效选择]" << std::endl; continue; }
         }
         else if (choice == "4") {
             if (currentMode == Mode::ADMIN) cmdStr = collectModifyAccountPassword();
@@ -592,7 +595,7 @@ void BankUI::userModeLoop() {
     while (true) {
         std::cout << "\n===== 普通用户模式 =====\n";
         std::cout << " [1] 账户管理\n [2] 存取转账\n [3] 定期存款\n [4] 信用账户\n";
-        std::cout << " [5] 账户信息修改\n [6] 个人设置\n [7] 日期与日志\n [8] 查询当前用户\n [0] 返回主菜单\n";
+        std::cout << " [5] 账户信息修改\n [6] 个人设置\n [7] 查询当前用户\n [0] 返回主菜单\n";
         std::string choice = promptLine("请选择: ");
         if (choice == "0") return;
         if (choice == "1") handleAccount();
@@ -613,8 +616,7 @@ void BankUI::userModeLoop() {
                 if (!cmdStr.empty()) executeAndFeedback(cmdStr);
             }
         }
-        else if (choice == "7") handleDateLog();
-        else if (choice == "8") executeAndFeedback("WHOAMI");
+        else if (choice == "7") executeAndFeedback("WHOAMI");
         else std::cout << " [无效选择]" << std::endl;
     }
 }

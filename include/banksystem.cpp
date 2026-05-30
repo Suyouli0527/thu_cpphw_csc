@@ -212,6 +212,7 @@ void BankSystem::modifyName(int id, const std::string &username, int accountPass
 }
 
 void BankSystem::modifyCredit(int id, double newCredit, int accountPassword) {
+    if (!isAdmin()) { printFailure(); return; }
     Account* acc = findAccount(id);
     if (!acc || !ownsAccount(id)) { printFailure(); return; }
     if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
@@ -363,10 +364,12 @@ void BankSystem::cashAdvance(int id, double amount, int accountPassword) {
 // ==================== Date & Interest ====================
 
 void BankSystem::showDate() const {
+    if (!isAdmin()) { printFailure(); return; }
     currentDate.showDate();
 }
 
 void BankSystem::addDays(int days) {
+    if (!isAdmin()) { printFailure(); return; }
     if (currentDate.addDays(days)) {
         updateAllAccountsInterest(currentDate);
         printSuccess();
@@ -377,6 +380,7 @@ void BankSystem::addDays(int days) {
 }
 
 void BankSystem::setDate(int year, int month, int day) {
+    if (!isAdmin()) { printFailure(); return; }
     if (currentDate.setDate(year, month, day)) {
         updateAllAccountsInterest(currentDate);
         printSuccess();
@@ -455,6 +459,7 @@ void BankSystem::whoami() const {
 // ==================== Log & Rollback ====================
 
 void BankSystem::showLog() const {
+    if (!isAdmin()) { printFailure(); return; }
     if (logRecords.empty()) {
         printFailure();
         return;
@@ -465,6 +470,7 @@ void BankSystem::showLog() const {
 }
 
 void BankSystem::rollback(int n) {
+    if (!isAdmin()) { printFailure(); return; }
     if (n < 0 || n > (int)logRecords.size()) {
         printFailure();
         return;
@@ -580,6 +586,7 @@ void BankSystem::rollback(int n) {
 }
 
 void BankSystem::saveLog(const std::string &filename) const {
+    if (!isAdmin()) { printFailure(); return; }
     std::ofstream file(filename);
     if (!file) {
         printFailure();
@@ -592,6 +599,7 @@ void BankSystem::saveLog(const std::string &filename) const {
 }
 
 void BankSystem::resume(const std::string &filename) {
+    if (!isAdmin()) { printFailure(); return; }
     if (!logRecords.empty()) {
         printFailure();
         return;
