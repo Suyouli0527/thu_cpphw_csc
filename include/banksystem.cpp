@@ -104,6 +104,8 @@ void BankSystem::removeAccount(int id) {
 void BankSystem::printAccountInfo(int id) const {
     Account* acc = findAccount(id);
     if (!acc) return;
+
+    // 基本信息行（单行，用于 queryAllAccounts）
     std::cout << acc->getId() << " "
               << acc->getType() << " "
               << acc->getName() << " "
@@ -137,7 +139,6 @@ void BankSystem::printAccountInfo(int id) const {
                       << fd.maturityDate.getDay() << " "
                       << (fd.partiallyWithdrawn ? "1" : "0");
         }
-        // 基金持仓
         std::cout << " " << savingAcc->getFundHoldingCount();
         for (const auto& fh : savingAcc->getFundHoldings()) {
             std::cout << " " << fh.fundIndex << " "
@@ -147,7 +148,6 @@ void BankSystem::printAccountInfo(int id) const {
                       << fh.purchaseDate.getMonth() << "-"
                       << fh.purchaseDate.getDay();
         }
-        // 理财产品持仓
         std::cout << " " << savingAcc->getWealthHoldingCount();
         for (const auto& wp : savingAcc->getWealthHoldings()) {
             std::cout << " " << wp.productIndex << " "
@@ -162,6 +162,82 @@ void BankSystem::printAccountInfo(int id) const {
         }
     }
     std::cout << std::endl;
+}
+
+void BankSystem::printAccountDetail(int id) const {
+    Account* acc = findAccount(id);
+    if (!acc) return;
+
+    std::cout << "  账户ID: " << acc->getId() << std::endl;
+    std::cout << "  类型: " << (acc->getType() == 'S' ? "储蓄账户" : "信用账户") << std::endl;
+    std::cout << "  名称: " << acc->getName() << std::endl;
+    std::cout << "  余额: " << BankSystem::formatAmount(acc->getBalance()) << std::endl;
+    std::cout << "  共享: " << (acc->isShared() ? "是" : "否");
+    if (acc->isShared()) {
+        std::cout << "  共有人:";
+        for (const auto &o : acc->getOwners()) {
+            std::cout << " " << o;
+        }
+    }
+    std::cout << std::endl;
+
+    if (acc->getType() == 'C') {
+        const CreditAccount* creditAcc = static_cast<const CreditAccount*>(acc);
+        std::cout << "  信用额度: " << BankSystem::formatAmount(creditAcc->getCredit()) << std::endl;
+        std::cout << "  还款日: 每月" << creditAcc->getRepaymentDay() << "日" << std::endl;
+        std::cout << "  取现债务: " << BankSystem::formatAmount(creditAcc->getCashAdvanceDebt()) << std::endl;
+        std::cout << "  消费债务: " << BankSystem::formatAmount(creditAcc->getConsumeDebt()) << std::endl;
+    }
+
+    if (acc->getType() == 'S') {
+        const SavingAccount* savingAcc = static_cast<const SavingAccount*>(acc);
+
+        // 定期存款
+        std::cout << "  定期存款: " << savingAcc->getFixedDepositCount() << "笔" << std::endl;
+        for (size_t i = 0; i < savingAcc->getFixedDeposits().size(); i++) {
+            const FixedDeposit& fd = savingAcc->getFixedDeposits()[i];
+            std::cout << "    [" << i << "] 本金:" << BankSystem::formatAmount(fd.principal)
+                      << " 期限:" << fd.months << "月"
+                      << " 存入:" << fd.depositDate.getYear() << "-"
+                      << fd.depositDate.getMonth() << "-" << fd.depositDate.getDay()
+                      << " 到期:" << fd.maturityDate.getYear() << "-"
+                      << fd.maturityDate.getMonth() << "-" << fd.maturityDate.getDay()
+                      << (fd.partiallyWithdrawn ? " [已部分支取]" : "")
+                      << std::endl;
+        }
+
+        // 基金持仓
+        std::cout << "  基金持仓: " << savingAcc->getFundHoldingCount() << "只" << std::endl;
+        for (size_t i = 0; i < savingAcc->getFundHoldings().size(); i++) {
+            const FundHolding& fh = savingAcc->getFundHoldings()[i];
+            double currentNav = InterestCalculator::getNav(fh.fundIndex, currentDate);
+            double currentValue = fh.shares * currentNav;
+            double cost = fh.shares * fh.navAtPurchase;
+            std::cout << "    [" << i << "] " << InterestCalculator::getFundName(fh.fundIndex)
+                      << " 份额:" << BankSystem::formatAmount(fh.shares)
+                      << " 买入净值:" << BankSystem::formatAmount(fh.navAtPurchase)
+                      << " 当前净值:" << BankSystem::formatAmount(currentNav)
+                      << " 市值:" << BankSystem::formatAmount(currentValue)
+                      << " 盈亏:" << BankSystem::formatAmount(currentValue - cost)
+                      << std::endl;
+        }
+
+        // 理财产品持仓
+        std::cout << "  理财持仓: " << savingAcc->getWealthHoldingCount() << "笔" << std::endl;
+        for (size_t i = 0; i < savingAcc->getWealthHoldings().size(); i++) {
+            const WealthProductHolding& wp = savingAcc->getWealthHoldings()[i];
+            double expectedInterest = InterestCalculator::calcWealthInterest(wp.principal, wp.productIndex);
+            std::cout << "    [" << i << "] " << InterestCalculator::getWPName(wp.productIndex)
+                      << " 本金:" << BankSystem::formatAmount(wp.principal)
+                      << " 预期收益:" << BankSystem::formatAmount(expectedInterest)
+                      << " 购买:" << wp.purchaseDate.getYear() << "-"
+                      << wp.purchaseDate.getMonth() << "-" << wp.purchaseDate.getDay()
+                      << " 到期:" << wp.maturityDate.getYear() << "-"
+                      << wp.maturityDate.getMonth() << "-" << wp.maturityDate.getDay()
+                      << (wp.settled ? " [已结算]" : "")
+                      << std::endl;
+        }
+    }
 }
 
 void BankSystem::openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay, int accountPassword, bool shared) {
@@ -283,7 +359,7 @@ void BankSystem::query(int id, int accountPassword) const {
     Account* acc = findAccount(id);
     if (!acc || !ownsAccount(id)) { printFailure(); return; }
     if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
-    printAccountInfo(id);
+    printAccountDetail(id);
 }
 
 void BankSystem::queryAllAccounts() const {

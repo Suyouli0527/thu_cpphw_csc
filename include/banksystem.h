@@ -26,6 +26,7 @@ private:
     void printFailure() const;
     bool ownsAccount(int id) const;
     void printAccountInfo(int id) const;
+    void printAccountDetail(int id) const;
 
 public:
     BankSystem();
