@@ -105,7 +105,6 @@ void BankSystem::printAccountInfo(int id) const {
     Account* acc = findAccount(id);
     if (!acc) return;
 
-    // 基本信息行（单行，用于 queryAllAccounts）
     std::cout << acc->getId() << " "
               << acc->getType() << " "
               << acc->getName() << " "
@@ -192,7 +191,6 @@ void BankSystem::printAccountDetail(int id) const {
     if (acc->getType() == 'S') {
         const SavingAccount* savingAcc = static_cast<const SavingAccount*>(acc);
 
-        // 定期存款
         std::cout << "  定期存款: " << savingAcc->getFixedDepositCount() << "笔" << std::endl;
         for (size_t i = 0; i < savingAcc->getFixedDeposits().size(); i++) {
             const FixedDeposit& fd = savingAcc->getFixedDeposits()[i];
@@ -206,7 +204,6 @@ void BankSystem::printAccountDetail(int id) const {
                       << std::endl;
         }
 
-        // 基金持仓
         std::cout << "  基金持仓: " << savingAcc->getFundHoldingCount() << "只" << std::endl;
         for (size_t i = 0; i < savingAcc->getFundHoldings().size(); i++) {
             const FundHolding& fh = savingAcc->getFundHoldings()[i];
@@ -222,7 +219,6 @@ void BankSystem::printAccountDetail(int id) const {
                       << std::endl;
         }
 
-        // 理财产品持仓
         std::cout << "  理财持仓: " << savingAcc->getWealthHoldingCount() << "笔" << std::endl;
         for (size_t i = 0; i < savingAcc->getWealthHoldings().size(); i++) {
             const WealthProductHolding& wp = savingAcc->getWealthHoldings()[i];
@@ -509,7 +505,6 @@ void BankSystem::buyWealthProduct(int id, int productIndex, double amount, int a
     }
 }
 
-// ==================== Date & Interest ====================
 
 void BankSystem::showDate() const {
     if (!isAdmin()) { printFailure(); return; }
@@ -538,7 +533,7 @@ void BankSystem::setDate(int year, int month, int day) {
     }
 }
 
-// ==================== Multi-User Management ====================
+
 
 void BankSystem::createUser(const std::string &username, const std::string &password) {
     if (!isAdmin()) { printFailure(); return; }
@@ -604,7 +599,6 @@ void BankSystem::whoami() const {
     std::cout << currentUserName << std::endl;
 }
 
-// ==================== Log & Rollback ====================
 
 void BankSystem::showLog() const {
     if (!isAdmin()) { printFailure(); return; }
@@ -752,7 +746,7 @@ void BankSystem::saveLog(const std::string &filename) const {
         printFailure();
         return;
     }
-    for (size_t i = 0; i < logRecords.size(); i++) {
+    for (auto i = 0; i < logRecords.size(); i++) {
         file << (i + 1) << " " << logRecords[i] << std::endl;
     }
     printSuccess();
