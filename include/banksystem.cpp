@@ -75,7 +75,9 @@ void BankSystem::updateAllAccountsInterest(const Date &newDate) {
     for (auto acc : accounts) {
         if (acc->getType() == 'S') {
             acc->updateInterest(newDate);
-            static_cast<SavingAccount*>(acc)->updateFixedDeposits(newDate);
+            SavingAccount* sa = static_cast<SavingAccount*>(acc);
+            sa->updateFixedDeposits(newDate);
+            sa->updateWealthProducts(newDate);
         } else if (acc->getType() == 'C') {
             static_cast<CreditAccount*>(acc)->updateCreditInterest(newDate);
         }
@@ -135,6 +137,29 @@ void BankSystem::printAccountInfo(int id) const {
                       << fd.maturityDate.getDay() << " "
                       << (fd.partiallyWithdrawn ? "1" : "0");
         }
+        // 基金持仓
+        std::cout << " " << savingAcc->getFundHoldingCount();
+        for (const auto& fh : savingAcc->getFundHoldings()) {
+            std::cout << " " << fh.fundIndex << " "
+                      << BankSystem::formatAmount(fh.shares) << " "
+                      << BankSystem::formatAmount(fh.navAtPurchase) << " "
+                      << fh.purchaseDate.getYear() << "-"
+                      << fh.purchaseDate.getMonth() << "-"
+                      << fh.purchaseDate.getDay();
+        }
+        // 理财产品持仓
+        std::cout << " " << savingAcc->getWealthHoldingCount();
+        for (const auto& wp : savingAcc->getWealthHoldings()) {
+            std::cout << " " << wp.productIndex << " "
+                      << BankSystem::formatAmount(wp.principal) << " "
+                      << wp.purchaseDate.getYear() << "-"
+                      << wp.purchaseDate.getMonth() << "-"
+                      << wp.purchaseDate.getDay() << " "
+                      << wp.maturityDate.getYear() << "-"
+                      << wp.maturityDate.getMonth() << "-"
+                      << wp.maturityDate.getDay() << " "
+                      << (wp.settled ? "1" : "0");
+        }
     }
     std::cout << std::endl;
 }
@@ -167,6 +192,11 @@ void BankSystem::closeAccount(int id, int accountPassword) {
     if (!acc || !ownsAccount(id)) { printFailure(); return; }
     if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
     if (acc->getBalance() != 0) { printFailure(); return; }
+    if (acc->getType() == 'S') {
+        SavingAccount* sa = static_cast<SavingAccount*>(acc);
+        if (sa->getFundHoldingCount() > 0 || sa->getWealthHoldingCount() > 0
+            || sa->getFixedDepositCount() > 0) { printFailure(); return; }
+    }
     removeAccount(id);
     printSuccess();
     logRecords.push_back(m_currentCommand);
@@ -354,6 +384,48 @@ void BankSystem::cashAdvance(int id, double amount, int accountPassword) {
     if (acc->getType() != 'C') { printFailure(); return; }
     CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
     if (creditAcc->cashAdvance(currentDate, amount)) {
+        printSuccess();
+        logRecords.push_back(m_currentCommand);
+    } else {
+        printFailure();
+    }
+}
+
+void BankSystem::buyFund(int id, int fundIndex, double amount, int accountPassword) {
+    Account* acc = findAccount(id);
+    if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
+    if (acc->getType() != 'S') { printFailure(); return; }
+    SavingAccount* savingAcc = static_cast<SavingAccount*>(acc);
+    if (savingAcc->buyFund(currentDate, fundIndex, amount)) {
+        printSuccess();
+        logRecords.push_back(m_currentCommand);
+    } else {
+        printFailure();
+    }
+}
+
+void BankSystem::sellFund(int id, int holdingIndex, int accountPassword) {
+    Account* acc = findAccount(id);
+    if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
+    if (acc->getType() != 'S') { printFailure(); return; }
+    SavingAccount* savingAcc = static_cast<SavingAccount*>(acc);
+    if (savingAcc->sellFund(holdingIndex, currentDate)) {
+        printSuccess();
+        logRecords.push_back(m_currentCommand);
+    } else {
+        printFailure();
+    }
+}
+
+void BankSystem::buyWealthProduct(int id, int productIndex, double amount, int accountPassword) {
+    Account* acc = findAccount(id);
+    if (!acc || !ownsAccount(id)) { printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
+    if (acc->getType() != 'S') { printFailure(); return; }
+    SavingAccount* savingAcc = static_cast<SavingAccount*>(acc);
+    if (savingAcc->buyWealthProduct(currentDate, productIndex, amount)) {
         printSuccess();
         logRecords.push_back(m_currentCommand);
     } else {
@@ -563,6 +635,18 @@ void BankSystem::rollback(int n) {
             int id, accPwd; double amount;
             iss >> id >> amount >> accPwd;
             cashAdvance(id, amount, accPwd);
+        } else if (action == "BUY_FUND") {
+            int id, accPwd, fundIndex; double amount;
+            iss >> id >> fundIndex >> amount >> accPwd;
+            buyFund(id, fundIndex, amount, accPwd);
+        } else if (action == "SELL_FUND") {
+            int id, accPwd, holdingIndex;
+            iss >> id >> holdingIndex >> accPwd;
+            sellFund(id, holdingIndex, accPwd);
+        } else if (action == "BUY_WP") {
+            int id, accPwd, productIndex; double amount;
+            iss >> id >> productIndex >> amount >> accPwd;
+            buyWealthProduct(id, productIndex, amount, accPwd);
         } else if (action == "ADD_DAY") {
             int days; iss >> days;
             addDays(days);
@@ -698,6 +782,18 @@ void BankSystem::resume(const std::string &filename) {
             int id, accPwd; double amount;
             iss >> id >> amount >> accPwd;
             cashAdvance(id, amount, accPwd);
+        } else if (action == "BUY_FUND") {
+            int id, accPwd, fundIndex; double amount;
+            iss >> id >> fundIndex >> amount >> accPwd;
+            buyFund(id, fundIndex, amount, accPwd);
+        } else if (action == "SELL_FUND") {
+            int id, accPwd, holdingIndex;
+            iss >> id >> holdingIndex >> accPwd;
+            sellFund(id, holdingIndex, accPwd);
+        } else if (action == "BUY_WP") {
+            int id, accPwd, productIndex; double amount;
+            iss >> id >> productIndex >> amount >> accPwd;
+            buyWealthProduct(id, productIndex, amount, accPwd);
         } else if (action == "ADD_DAY") {
             int y, m, d; iss >> y >> m >> d;
             setDate(y, m, d);

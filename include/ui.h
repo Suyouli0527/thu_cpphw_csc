@@ -26,6 +26,7 @@ private:
     void handleShared();
     void handleUserMgmt();
     void handleDateLog();
+    void handleInvestment();
 
     std::string collectOpen();
     std::string collectClose();
@@ -53,6 +54,9 @@ private:
     std::string collectRollback();
     std::string collectSave();
     std::string collectResume();
+    std::string collectBuyFund();
+    std::string collectSellFund();
+    std::string collectBuyWealthProduct();
 
     void executeAndFeedback(const std::string &commandStr);
     std::string promptLine(const std::string &label) const;

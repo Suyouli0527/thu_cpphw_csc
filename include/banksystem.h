@@ -55,6 +55,10 @@ public:
     void consume(int id, double amount, int accountPassword);
     void cashAdvance(int id, double amount, int accountPassword);
 
+    void buyFund(int id, int fundIndex, double amount, int accountPassword);
+    void sellFund(int id, int holdingIndex, int accountPassword);
+    void buyWealthProduct(int id, int productIndex, double amount, int accountPassword);
+
     void showDate() const;
     void addDays(int days);
     void setDate(int year, int month, int day);

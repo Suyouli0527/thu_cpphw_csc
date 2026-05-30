@@ -87,6 +87,9 @@ void BankUI::feedback(const std::string &action, bool ok) const {
         else if (upper == "REMOVE_OWNER") std::cout << " [移除共有人失败]";
         else if (upper == "CREATE_USER") std::cout << " [创建用户失败]";
         else if (upper == "DELETE_USER") std::cout << " [删除用户失败]";
+        else if (upper == "BUY_FUND") std::cout << " [基金购买失败]";
+        else if (upper == "SELL_FUND") std::cout << " [基金赎回失败]";
+        else if (upper == "BUY_WP") std::cout << " [理财产品购买失败]";
         else std::cout << " [操作失败]";
     } else {
         if (upper == "OPEN") std::cout << " [开户成功]";
@@ -106,6 +109,9 @@ void BankUI::feedback(const std::string &action, bool ok) const {
         else if (upper == "REMOVE_OWNER") std::cout << " [移除共有人成功]";
         else if (upper == "CREATE_USER") std::cout << " [创建用户成功]";
         else if (upper == "DELETE_USER") std::cout << " [删除用户成功]";
+        else if (upper == "BUY_FUND") std::cout << " [基金购买成功]";
+        else if (upper == "SELL_FUND") std::cout << " [基金赎回成功]";
+        else if (upper == "BUY_WP") std::cout << " [理财产品购买成功]";
         else if (upper == "ADD_DAY" || upper == "SET_DATE") std::cout << " [日期更新成功]";
         else std::cout << " [操作成功]";
     }
@@ -489,6 +495,65 @@ void BankUI::handleCredit() {
     }
 }
 
+void BankUI::handleInvestment() {
+    while (true) {
+        std::cout << "\n--- 投资理财 ---\n";
+        std::cout << " [1] 基金购买\n [2] 基金赎回\n [3] 理财产品购买\n [0] 返回\n";
+        std::string choice = promptLine("请选择: ");
+        if (choice == "0") return;
+        std::string cmdStr;
+        if (choice == "1") cmdStr = collectBuyFund();
+        else if (choice == "2") cmdStr = collectSellFund();
+        else if (choice == "3") cmdStr = collectBuyWealthProduct();
+        else { std::cout << " [无效选择]" << std::endl; continue; }
+        if (!cmdStr.empty()) executeAndFeedback(cmdStr);
+    }
+}
+
+std::string BankUI::collectBuyFund() {
+    std::cout << "可选基金产品:\n";
+    for (int i = 0; i < InterestCalculator::fundCount; i++) {
+        std::cout << "  [" << i << "] " << InterestCalculator::getFundName(i) << "\n";
+    }
+    int fundIndex;
+    if (!promptInt("请选择基金编号: ", fundIndex)) return "";
+    double amount;
+    if (!promptDouble("请输入购买金额: ", amount)) return "";
+    int pwd;
+    if (!promptInt("请输入账户密码: ", pwd)) return "";
+    std::ostringstream oss;
+    oss << "BUY_FUND " << fundIndex << " " << amount << " " << pwd;
+    return currentMode == Mode::CARD ? injectCardId(oss.str()) : oss.str();
+}
+
+std::string BankUI::collectSellFund() {
+    int holdingIndex;
+    if (!promptInt("请输入要赎回的持仓编号: ", holdingIndex)) return "";
+    int pwd;
+    if (!promptInt("请输入账户密码: ", pwd)) return "";
+    std::ostringstream oss;
+    oss << "SELL_FUND " << holdingIndex << " " << pwd;
+    return currentMode == Mode::CARD ? injectCardId(oss.str()) : oss.str();
+}
+
+std::string BankUI::collectBuyWealthProduct() {
+    std::cout << "可选理财产品:\n";
+    for (int i = 0; i < InterestCalculator::wpCount; i++) {
+        std::cout << "  [" << i << "] " << InterestCalculator::getWPName(i)
+                  << " 期限" << InterestCalculator::getWPDays(i) << "天"
+                  << " 年化" << (InterestCalculator::wpRates[i] * 100) << "%\n";
+    }
+    int productIndex;
+    if (!promptInt("请选择产品编号: ", productIndex)) return "";
+    double amount;
+    if (!promptDouble("请输入购买金额: ", amount)) return "";
+    int pwd;
+    if (!promptInt("请输入账户密码: ", pwd)) return "";
+    std::ostringstream oss;
+    oss << "BUY_WP " << productIndex << " " << amount << " " << pwd;
+    return currentMode == Mode::CARD ? injectCardId(oss.str()) : oss.str();
+}
+
 void BankUI::handleModify() {
     while (true) {
         std::cout << "\n--- 账户信息修改 ---\n";
@@ -575,7 +640,7 @@ void BankUI::adminModeLoop() {
         std::cout << "\n===== 管理员模式 =====\n";
         std::cout << " [1] 账户管理\n [2] 存取转账\n [3] 定期存款\n [4] 信用账户\n";
         std::cout << " [5] 账户信息修改\n [6] 共享账户管理\n [7] 用户管理\n";
-        std::cout << " [8] 日期与日志\n [9] 查询当前用户\n [0] 返回主菜单\n";
+        std::cout << " [8] 日期与日志\n [9] 投资理财\n [10] 查询当前用户\n [0] 返回主菜单\n";
         std::string choice = promptLine("请选择: ");
         if (choice == "0") return;
         if (choice == "1") handleAccount();
@@ -586,7 +651,8 @@ void BankUI::adminModeLoop() {
         else if (choice == "6") handleShared();
         else if (choice == "7") handleUserMgmt();
         else if (choice == "8") handleDateLog();
-        else if (choice == "9") executeAndFeedback("WHOAMI");
+        else if (choice == "9") handleInvestment();
+        else if (choice == "10") executeAndFeedback("WHOAMI");
         else std::cout << " [无效选择]" << std::endl;
     }
 }
@@ -595,15 +661,16 @@ void BankUI::userModeLoop() {
     while (true) {
         std::cout << "\n===== 普通用户模式 =====\n";
         std::cout << " [1] 账户管理\n [2] 存取转账\n [3] 定期存款\n [4] 信用账户\n";
-        std::cout << " [5] 账户信息修改\n [6] 个人设置\n [7] 查询当前用户\n [0] 返回主菜单\n";
+        std::cout << " [5] 投资理财\n [6] 账户信息修改\n [7] 个人设置\n [8] 查询当前用户\n [0] 返回主菜单\n";
         std::string choice = promptLine("请选择: ");
         if (choice == "0") return;
         if (choice == "1") handleAccount();
         else if (choice == "2") handleDepositWithdraw();
         else if (choice == "3") handleFixedDeposit();
         else if (choice == "4") handleCredit();
-        else if (choice == "5") handleModify();
-        else if (choice == "6") {
+        else if (choice == "5") handleInvestment();
+        else if (choice == "6") handleModify();
+        else if (choice == "7") {
             while (true) {
                 std::cout << "\n--- 个人设置 ---\n";
                 std::cout << " [1] 切换用户\n [2] 修改用户密码\n [0] 返回\n";
@@ -616,7 +683,7 @@ void BankUI::userModeLoop() {
                 if (!cmdStr.empty()) executeAndFeedback(cmdStr);
             }
         }
-        else if (choice == "7") executeAndFeedback("WHOAMI");
+        else if (choice == "8") executeAndFeedback("WHOAMI");
         else std::cout << " [无效选择]" << std::endl;
     }
 }
@@ -625,14 +692,15 @@ void BankUI::cardModeLoop() {
     while (true) {
         std::cout << "\n===== 插卡模式 (账户 #" << insertedCardId << ") =====\n";
         std::cout << " [1] 存取转账\n [2] 定期存款\n [3] 信用账户\n";
-        std::cout << " [4] 账户信息修改\n [5] 查询账户\n [6] 销户\n [7] 查询当前用户\n [0] 退卡返回主菜单\n";
+        std::cout << " [4] 投资理财\n [5] 账户信息修改\n [6] 查询账户\n [7] 销户\n [8] 查询当前用户\n [0] 退卡返回主菜单\n";
         std::string choice = promptLine("请选择: ");
         if (choice == "0") return;
         if (choice == "1") handleDepositWithdraw();
         else if (choice == "2") handleFixedDeposit();
         else if (choice == "3") handleCredit();
-        else if (choice == "4") handleModify();
-        else if (choice == "5") {
+        else if (choice == "4") handleInvestment();
+        else if (choice == "5") handleModify();
+        else if (choice == "6") {
             while (true) {
                 std::cout << "\n--- 查询账户 ---\n";
                 std::cout << " [1] 查询当前账户\n [2] 查询所有账户\n [0] 返回\n";
@@ -643,8 +711,8 @@ void BankUI::cardModeLoop() {
                 else std::cout << " [无效选择]" << std::endl;
             }
         }
-        else if (choice == "6") { std::string s = collectClose(); if (!s.empty()) executeAndFeedback(s); }
-        else if (choice == "7") executeAndFeedback("WHOAMI");
+        else if (choice == "7") { std::string s = collectClose(); if (!s.empty()) executeAndFeedback(s); }
+        else if (choice == "8") executeAndFeedback("WHOAMI");
         else std::cout << " [无效选择]" << std::endl;
     }
     insertedCardId = -1;

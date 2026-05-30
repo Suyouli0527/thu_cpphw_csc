@@ -107,6 +107,50 @@ void SavingAccount::updateFixedDeposits(const Date &date) {
     }
 }
 
+bool SavingAccount::buyFund(const Date &date, int fundIndex, double amount) {
+    if (amount <= 0 || amount > balance) return false;
+    if (fundIndex < 0 || fundIndex >= InterestCalculator::fundCount) return false;
+    double nav = InterestCalculator::getNav(fundIndex, date);
+    double shares = amount / nav;
+    balance -= amount;
+    fundHoldings.push_back(FundHolding{shares, nav, date, fundIndex});
+    return true;
+}
+
+bool SavingAccount::sellFund(int holdingIndex, const Date &date) {
+    if (holdingIndex < 0 || holdingIndex >= (int)fundHoldings.size()) return false;
+    FundHolding &fh = fundHoldings[holdingIndex];
+    double currentNav = InterestCalculator::getNav(fh.fundIndex, date);
+    double proceeds = fh.shares * currentNav;
+    balance += proceeds;
+    fundHoldings.erase(fundHoldings.begin() + holdingIndex);
+    return true;
+}
+
+bool SavingAccount::buyWealthProduct(const Date &date, int productIndex, double amount) {
+    if (amount <= 0 || amount > balance) return false;
+    if (productIndex < 0 || productIndex >= InterestCalculator::wpCount) return false;
+    int days = InterestCalculator::getWPDays(productIndex);
+    Date maturity = date;
+    maturity.addDays(days);
+    balance -= amount;
+    wealthHoldings.push_back(WealthProductHolding{amount, productIndex, date, maturity, false});
+    return true;
+}
+
+void SavingAccount::updateWealthProducts(const Date &date) {
+    for (auto it = wealthHoldings.begin(); it != wealthHoldings.end(); ) {
+        if (date - it->maturityDate >= 0 && !it->settled) {
+            double interest = InterestCalculator::calcWealthInterest(it->principal, it->productIndex);
+            balance += it->principal + interest;
+            it->settled = true;
+            it = wealthHoldings.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
 CreditAccount::CreditAccount(int id, char, const std::string &name, double creditAmount, int repDay, const Date &openDate, int pwd, bool isShared)
     : Account(id, 'C', name, 0, openDate, pwd, isShared), credit(creditAmount), repaymentDay(repDay), lastInterestUpdate(openDate) {}
 

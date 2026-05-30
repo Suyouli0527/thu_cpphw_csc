@@ -56,8 +56,25 @@ struct FixedDeposit {
     bool partiallyWithdrawn;
 };
 
+struct FundHolding {
+    double shares;
+    double navAtPurchase;
+    Date purchaseDate;
+    int fundIndex;
+};
+
+struct WealthProductHolding {
+    double principal;
+    int productIndex;
+    Date purchaseDate;
+    Date maturityDate;
+    bool settled;
+};
+
 class SavingAccount : public Account {
     std::vector<FixedDeposit> fixedDeposits;
+    std::vector<FundHolding> fundHoldings;
+    std::vector<WealthProductHolding> wealthHoldings;
 
 public:
     SavingAccount(int id, char type, const std::string &name, double balance, const Date &openDate, int pwd, bool isShared);
@@ -69,7 +86,18 @@ public:
     void updateFixedDeposits(const Date &date);
     std::vector<FixedDeposit>& getFixedDeposits() { return fixedDeposits; }
     const std::vector<FixedDeposit>& getFixedDeposits() const { return fixedDeposits; }
-    int getFixedDepositCount() const { return fixedDeposits.size(); }
+    int getFixedDepositCount() const { return (int)fixedDeposits.size(); }
+
+    bool buyFund(const Date &date, int fundIndex, double amount);
+    bool sellFund(int holdingIndex, const Date &date);
+    bool buyWealthProduct(const Date &date, int productIndex, double amount);
+    void updateWealthProducts(const Date &date);
+    std::vector<FundHolding>& getFundHoldings() { return fundHoldings; }
+    const std::vector<FundHolding>& getFundHoldings() const { return fundHoldings; }
+    int getFundHoldingCount() const { return (int)fundHoldings.size(); }
+    std::vector<WealthProductHolding>& getWealthHoldings() { return wealthHoldings; }
+    const std::vector<WealthProductHolding>& getWealthHoldings() const { return wealthHoldings; }
+    int getWealthHoldingCount() const { return (int)wealthHoldings.size(); }
 };
 
 struct CreditTransaction {

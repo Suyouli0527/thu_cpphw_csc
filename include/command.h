@@ -131,6 +131,21 @@ public:
             if (!(iss >> id >> amount >> accountPassword)) return false;
             system.fixedWithdraw(id, amount, accountPassword);
         }
+        else if (cmd == "BUY_FUND") {
+            int id, accountPassword, fundIndex; double amount;
+            if (!(iss >> id >> fundIndex >> amount >> accountPassword)) return false;
+            system.buyFund(id, fundIndex, amount, accountPassword);
+        }
+        else if (cmd == "SELL_FUND") {
+            int id, accountPassword, holdingIndex;
+            if (!(iss >> id >> holdingIndex >> accountPassword)) return false;
+            system.sellFund(id, holdingIndex, accountPassword);
+        }
+        else if (cmd == "BUY_WP") {
+            int id, accountPassword, productIndex; double amount;
+            if (!(iss >> id >> productIndex >> amount >> accountPassword)) return false;
+            system.buyWealthProduct(id, productIndex, amount, accountPassword);
+        }
         else if (cmd == "SHOW_DATE") {
             system.showDate();
         }
