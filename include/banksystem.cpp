@@ -192,7 +192,7 @@ void BankSystem::printAccountDetail(int id) const {
         const SavingAccount* savingAcc = static_cast<const SavingAccount*>(acc);
 
         std::cout << "  定期存款: " << savingAcc->getFixedDepositCount() << "笔" << std::endl;
-        for (size_t i = 0; i < savingAcc->getFixedDeposits().size(); i++) {
+        for (auto i = 0; i < savingAcc->getFixedDeposits().size(); i++) {
             const FixedDeposit& fd = savingAcc->getFixedDeposits()[i];
             std::cout << "    [" << i << "] 本金:" << BankSystem::formatAmount(fd.principal)
                       << " 期限:" << fd.months << "月"
@@ -205,7 +205,7 @@ void BankSystem::printAccountDetail(int id) const {
         }
 
         std::cout << "  基金持仓: " << savingAcc->getFundHoldingCount() << "只" << std::endl;
-        for (size_t i = 0; i < savingAcc->getFundHoldings().size(); i++) {
+        for (auto i = 0; i < savingAcc->getFundHoldings().size(); i++) {
             const FundHolding& fh = savingAcc->getFundHoldings()[i];
             double currentNav = InterestCalculator::getNav(fh.fundIndex, currentDate);
             double currentValue = fh.shares * currentNav;
@@ -220,7 +220,7 @@ void BankSystem::printAccountDetail(int id) const {
         }
 
         std::cout << "  理财持仓: " << savingAcc->getWealthHoldingCount() << "笔" << std::endl;
-        for (size_t i = 0; i < savingAcc->getWealthHoldings().size(); i++) {
+        for (auto i = 0; i < savingAcc->getWealthHoldings().size(); i++) {
             const WealthProductHolding& wp = savingAcc->getWealthHoldings()[i];
             double expectedInterest = InterestCalculator::calcWealthInterest(wp.principal, wp.productIndex);
             std::cout << "    [" << i << "] " << InterestCalculator::getWPName(wp.productIndex)
@@ -281,7 +281,7 @@ void BankSystem::addOwner(int id, const std::string &userName) {
     if (!acc->isShared()) { printFailure(); return; }
     User* targetUser = findUser(userName);
     if (!targetUser) { printFailure(); return; }
-    size_t before = acc->getOwners().size();
+    auto before = acc->getOwners().size();
     acc->addOwner(userName);
     if (acc->getOwners().size() == before) { printFailure(); return; }
     targetUser->addAccountID(id);
@@ -294,7 +294,7 @@ void BankSystem::removeOwner(int id, const std::string &userName) {
     Account* acc = findAccount(id);
     if (!acc) { printFailure(); return; }
     if (!acc->isShared()) { printFailure(); return; }
-    size_t before = acc->getOwners().size();
+    auto before = acc->getOwners().size();
     acc->removeOwner(userName);
     if (acc->getOwners().size() == before) { printFailure(); return; }
     User* targetUser = findUser(userName);
@@ -553,7 +553,7 @@ void BankSystem::deleteUser(const std::string &username) {
     User* user = findUser(username);
     if (!user) { printFailure(); return; }
     if (user->getAccountCount() > 0) { printFailure(); return; }
-    for (size_t i = 0; i < users.size(); i++) {
+    for (auto i = 0; i < users.size(); i++) {
         if (users[i].getUserName() == username) {
             users.erase(users.begin() + i);
             printSuccess();
@@ -606,7 +606,7 @@ void BankSystem::showLog() const {
         printFailure();
         return;
     }
-    for (size_t i = 0; i < logRecords.size(); i++) {
+    for (auto i = 0; i < logRecords.size(); i++) {
         std::cout << (i + 1) << " " << logRecords[i] << std::endl;
     }
 }
@@ -767,7 +767,7 @@ void BankSystem::resume(const std::string &filename) {
     std::string line;
     while (std::getline(file, line)) {
         if (line.empty()) continue;
-        size_t pos = line.find(' ');
+        auto pos = line.find(' ');
         if (pos == std::string::npos) {
             printFailure();
             return;
