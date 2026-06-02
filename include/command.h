@@ -2,13 +2,9 @@
 #include "banksystem.h"
 #include <sstream>
 #include <string>
-#include <vector>
 
 class Command {
 private:
-    BankSystem& system;
-    std::string m_lastAction;
-
     static bool isPositiveInt(const std::string& s) {
         if (s.empty()) return false;
         for (char c : s) {
@@ -18,18 +14,16 @@ private:
     }
 
 public:
-    Command(BankSystem &sys) : system(sys) {}
-
-    const std::string& lastAction() const { return m_lastAction; }
-
-    bool execute(const std::string &command) {
+    // 静态命令解析与执行
+    // 成功时 outAction 接收命令词，返回 true；解析失败返回 false
+    static bool execute(BankSystem &system, const std::string &command, std::string &outAction) {
         system.setRawCommand(command);
         system.resetResult();
         std::istringstream iss(command);
         std::string cmd;
         iss >> cmd;
         if (iss.fail()) return false;
-        m_lastAction = cmd;
+        outAction = cmd;
 
         if (cmd == "OPEN") {
             int id; char type; std::string name; double balance;

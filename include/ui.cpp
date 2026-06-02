@@ -3,7 +3,7 @@
 #include <sstream>
 #include <iomanip>
 
-BankUI::BankUI(BankSystem& sys) : system(sys), cmd(sys), currentMode(Mode::NONE) {}
+BankUI::BankUI(BankSystem& sys) : system(sys), currentMode(Mode::NONE) {}
 
 std::string BankUI::getPasswordInput(const std::string &prompt) const {
     std::cout << prompt;
@@ -48,12 +48,12 @@ bool BankUI::promptDouble(const std::string &label, double &out) const {
 
 void BankUI::executeAndFeedback(const std::string &commandStr) {
     system.setSilent(true);
-    bool parseOk = cmd.execute(commandStr);
+    bool parseOk = Command::execute(system, commandStr, m_lastAction);
     system.setSilent(false);
     if (!parseOk) {
         std::cout << " [命令格式错误]" << std::endl;
     } else {
-        feedback(cmd.lastAction(), system.lastResult());
+        feedback(m_lastAction, system.lastResult());
     }
 }
 

@@ -6,7 +6,7 @@
 class BankUI {
 private:
     BankSystem& system;
-    Command cmd;
+    std::string m_lastAction;
     enum class Mode { NONE, ADMIN, USER };
     Mode currentMode;
 

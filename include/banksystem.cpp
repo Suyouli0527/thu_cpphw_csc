@@ -1,4 +1,5 @@
 #include "banksystem.h"
+#include "command.h"
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -98,6 +99,24 @@ void BankSystem::removeAccount(int id) {
             break;
         }
     }
+}
+
+void BankSystem::replayCommands(const std::vector<std::string>& commands) {
+    m_silent = true;
+    std::string ignored;
+    for (const auto &cmd : commands) {
+        // 跳过不改变系统状态的命令
+        std::istringstream iss(cmd);
+        std::string action;
+        iss >> action;
+        if (action == "QUERY" || action == "QUERYALL" || action == "QUERY_USER"
+            || action == "QUERY_USERLIST" || action == "SHOW_DATE" || action == "WHOAMI"
+            || action == "LOG" || action == "ROLLBACK" || action == "SAVE" || action == "RESUME") {
+            continue;
+        }
+        Command::execute(*this, cmd, ignored);
+    }
+    m_silent = false;
 }
 
 void BankSystem::printAccountInfo(int id) const {
@@ -533,101 +552,7 @@ void BankSystem::rollback(int n) {
     currentUserName = "default";
     logRecords.clear();
 
-    m_silent = true;
-    for (const auto &cmd : cmdsToReplay) {
-        m_currentCommand = cmd;
-        std::istringstream iss(cmd);
-        std::string action;
-        iss >> action;
-
-        if (action == "OPEN") {
-            int id; char type; std::string name; double balance;
-            iss >> id >> type >> name >> balance;
-            int repDay = 0, accPwd = 0, sharedInt = 0;
-            if (type == 'C') { iss >> repDay; }
-            iss >> accPwd >> sharedInt;
-            openAccount(id, type, name, balance, repDay, accPwd, sharedInt != 0);
-        } else if (action == "CLOSE") {
-            int id, accPwd; iss >> id >> accPwd;
-            closeAccount(id, accPwd);
-        } else if (action == "MODIFY") {
-            std::string subAction;
-            iss >> subAction;
-            if (subAction == "NAME") {
-                int id, accPwd; std::string name;
-                iss >> id >> name >> accPwd;
-                modifyName(id, name, accPwd);
-            } else if (subAction == "CREDIT") {
-                int id, accPwd; double credit;
-                iss >> id >> credit >> accPwd;
-                modifyCredit(id, credit, accPwd);
-            } else if (subAction == "SHARED") {
-                int id; std::string sharedStr;
-                iss >> id >> sharedStr;
-                modifyShared(id, sharedStr == "ys");
-            }
-        } else if (action == "MODIFY_USERPASSWORD") {
-            std::string oldPwd, newPwd;
-            iss >> oldPwd >> newPwd;
-            changeUserPassword(oldPwd, newPwd);
-        } else if (action == "MODIFY_ACCOUNTPASSWORD") {
-            int id, oldPwd, newPwd;
-            iss >> id >> oldPwd >> newPwd;
-            changeAccountPassword(id, oldPwd, newPwd);
-        } else if (action == "ADD_OWNER") {
-            int id; std::string userName;
-            iss >> id >> userName;
-            addOwner(id, userName);
-        } else if (action == "REMOVE_OWNER") {
-            int id; std::string userName;
-            iss >> id >> userName;
-            removeOwner(id, userName);
-        } else if (action == "DEPOSIT") {
-            int id, accPwd; double amount;
-            iss >> id >> amount >> accPwd;
-            deposit(id, amount, accPwd);
-        } else if (action == "WITHDRAW") {
-            int id, accPwd; double amount;
-            iss >> id >> amount >> accPwd;
-            withdraw(id, amount, accPwd);
-        } else if (action == "TRANSFER") {
-            int srcId, dstId, accPwd; double amount;
-            iss >> srcId >> dstId >> amount >> accPwd;
-            transfer(srcId, dstId, amount, accPwd);
-        } else if (action == "FIXED_DEPOSIT") {
-            int id, accPwd; double amount; int months;
-            iss >> id >> amount >> months >> accPwd;
-            fixedDeposit(id, amount, months, accPwd);
-        } else if (action == "FIXED_WITHDRAW") {
-            int id, accPwd; double amount;
-            iss >> id >> amount >> accPwd;
-            fixedWithdraw(id, amount, accPwd);
-        } else if (action == "CONSUME") {
-            int id, accPwd; double amount;
-            iss >> id >> amount >> accPwd;
-            consume(id, amount, accPwd);
-        } else if (action == "CASH_ADVANCE") {
-            int id, accPwd; double amount;
-            iss >> id >> amount >> accPwd;
-            cashAdvance(id, amount, accPwd);
-        } else if (action == "ADD_DAY") {
-            int days; iss >> days;
-            addDays(days);
-        } else if (action == "SET_DATE") {
-            int y, m, d; iss >> y >> m >> d;
-            setDate(y, m, d);
-        } else if (action == "SWITCH") {
-            std::string username, pwd; iss >> username >> pwd;
-            switchUser(username, pwd);
-        } else if (action == "CREATE_USER") {
-            std::string username, pwd; iss >> username >> pwd;
-            createUser(username, pwd);
-        } else if (action == "DELETE_USER") {
-            std::string username; iss >> username;
-            deleteUser(username);
-        }
-    }
-    m_silent = false;
+    replayCommands(cmdsToReplay);
 
     printSuccess();
 }
@@ -669,97 +594,7 @@ void BankSystem::resume(const std::string &filename) {
     }
     file.close();
 
-    m_silent = true;
-    for (const auto &cmd : subCommands) {
-        m_currentCommand = cmd;
-        std::istringstream iss(cmd);
-        std::string action;
-        iss >> action;
-
-        if (action == "OPEN") {
-            int id; char type; std::string name; double balance;
-            iss >> id >> type >> name >> balance;
-            int repDay = 0, accPwd = 0, sharedInt = 0;
-            if (type == 'C') { iss >> repDay; }
-            iss >> accPwd >> sharedInt;
-            openAccount(id, type, name, balance, repDay, accPwd, sharedInt != 0);
-        } else if (action == "CLOSE") {
-            int id, accPwd; iss >> id >> accPwd;
-            closeAccount(id, accPwd);
-        } else if (action == "MODIFY") {
-            std::string subAction; iss >> subAction;
-            if (subAction == "NAME") {
-                int id, accPwd; std::string name;
-                iss >> id >> name >> accPwd;
-                modifyName(id, name, accPwd);
-            } else if (subAction == "CREDIT") {
-                int id, accPwd; double credit;
-                iss >> id >> credit >> accPwd;
-                modifyCredit(id, credit, accPwd);
-            } else if (subAction == "SHARED") {
-                int id; std::string sharedStr;
-                iss >> id >> sharedStr;
-                modifyShared(id, sharedStr == "ys");
-            }
-        } else if (action == "MODIFY_USERPASSWORD") {
-            std::string oldPwd, newPwd;
-            iss >> oldPwd >> newPwd;
-            changeUserPassword(oldPwd, newPwd);
-        } else if (action == "MODIFY_ACCOUNTPASSWORD") {
-            int id, oldPwd, newPwd;
-            iss >> id >> oldPwd >> newPwd;
-            changeAccountPassword(id, oldPwd, newPwd);
-        } else if (action == "ADD_OWNER") {
-            int id; std::string userName;
-            iss >> id >> userName;
-            addOwner(id, userName);
-        } else if (action == "REMOVE_OWNER") {
-            int id; std::string userName;
-            iss >> id >> userName;
-            removeOwner(id, userName);
-        } else if (action == "DEPOSIT") {
-            int id, accPwd; double amount;
-            iss >> id >> amount >> accPwd;
-            deposit(id, amount, accPwd);
-        } else if (action == "WITHDRAW") {
-            int id, accPwd; double amount;
-            iss >> id >> amount >> accPwd;
-            withdraw(id, amount, accPwd);
-        } else if (action == "TRANSFER") {
-            int srcId, dstId, accPwd; double amount;
-            iss >> srcId >> dstId >> amount >> accPwd;
-            transfer(srcId, dstId, amount, accPwd);
-        } else if (action == "FIXED_DEPOSIT") {
-            int id, accPwd; double amount; int months;
-            iss >> id >> amount >> months >> accPwd;
-            fixedDeposit(id, amount, months, accPwd);
-        } else if (action == "FIXED_WITHDRAW") {
-            int id, accPwd; double amount;
-            iss >> id >> amount >> accPwd;
-            fixedWithdraw(id, amount, accPwd);
-        } else if (action == "CONSUME") {
-            int id, accPwd; double amount;
-            iss >> id >> amount >> accPwd;
-            consume(id, amount, accPwd);
-        } else if (action == "CASH_ADVANCE") {
-            int id, accPwd; double amount;
-            iss >> id >> amount >> accPwd;
-            cashAdvance(id, amount, accPwd);
-        } else if (action == "ADD_DAY") {
-            int days; iss >> days;
-            addDays(days);
-        } else if (action == "SWITCH") {
-            std::string username, pwd; iss >> username >> pwd;
-            switchUser(username, pwd);
-        } else if (action == "CREATE_USER") {
-            std::string username, pwd; iss >> username >> pwd;
-            createUser(username, pwd);
-        } else if (action == "DELETE_USER") {
-            std::string username; iss >> username;
-            deleteUser(username);
-        }
-    }
-    m_silent = false;
+    replayCommands(subCommands);
 
     printSuccess();
 }
