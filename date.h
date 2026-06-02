@@ -9,7 +9,6 @@ public:
     int getYear() const { return year; }
     int getMonth() const { return month; }
     int getDay() const { return day; }
-    int getTotalDays() const { return totalDays; }
     std::string getMonthName() const { return monthName[month]; }
     std::string getWeekDay() const { return weekName[totalDays % 7]; }
     int getMaxDay() const;
