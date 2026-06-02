@@ -110,12 +110,12 @@ void BankSystem::printAccountInfo(int id) const {
               << acc->getName() << " "
               << BankSystem::formatAmount(acc->getBalance());
     if (acc->isShared()) {
-        std::cout << " 1";
+        std::cout << " SHARED";
         for (const auto &o : acc->getOwners()) {
             std::cout << " " << o;
         }
     } else {
-        std::cout << " 0";
+        std::cout << " NOT_SHARED";
     }
     if (acc->getType() == 'C') {
         const CreditAccount* creditAcc = static_cast<const CreditAccount*>(acc);
@@ -157,7 +157,7 @@ void BankSystem::printAccountInfo(int id) const {
                       << wp.maturityDate.getYear() << "-"
                       << wp.maturityDate.getMonth() << "-"
                       << wp.maturityDate.getDay() << " "
-                      << (wp.settled ? "1" : "0");
+                      << (wp.settled ? "SETTLED" : "NOT_SETTLED");
         }
     }
     std::cout << std::endl;
