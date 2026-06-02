@@ -254,8 +254,8 @@ std::string BankUI::collectModifyName() {
     if (newName.empty()) return "";
     if (!promptInt("请输入账户密码: ", pwd)) return "";
     std::ostringstream oss;
-    oss << "MODIFY NAME " << newName << " " << pwd;
-    return injectCardId(oss.str());
+    oss << "MODIFY NAME " << insertedCardId << " " << newName << " " << pwd;
+    return oss.str();
 }
 
 std::string BankUI::collectModifyCredit() {
@@ -272,8 +272,8 @@ std::string BankUI::collectModifyCredit() {
     if (!promptDouble("请输入新信用额度: ", credit)) return "";
     if (!promptInt("请输入账户密码: ", pwd)) return "";
     std::ostringstream oss;
-    oss << "MODIFY CREDIT " << credit << " " << pwd;
-    return injectCardId(oss.str());
+    oss << "MODIFY CREDIT " << insertedCardId << " " << credit << " " << pwd;
+    return oss.str();
 }
 
 std::string BankUI::collectModifyShared() {
@@ -286,7 +286,7 @@ std::string BankUI::collectModifyShared() {
         std::cout << " [请输入ys或ns]" << std::endl;
     }
     std::ostringstream oss;
-    oss << "MODIFY_SHARED " << id << " " << sharedStr;
+    oss << "MODIFY SHARED " << id << " " << sharedStr;
     return oss.str();
 }
 
