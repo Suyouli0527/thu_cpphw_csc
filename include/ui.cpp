@@ -743,7 +743,9 @@ void BankUI::run() {
             std::cout.rdbuf(old);
             if (buf.str().find("admin") != std::string::npos) {
                 std::cout << "\n===== 管理员登录成功 =====\n";
+                currentMode = Mode::ADMIN;
                 adminModeLoop();
+                currentMode = Mode::NONE;
             } else {
                 std::cout << "密码错误\n";
             }
@@ -760,7 +762,9 @@ void BankUI::run() {
             std::cout.rdbuf(old);
             if (buf.str().find(username) != std::string::npos) {
                 std::cout << "\n===== 登录成功 =====\n";
+                currentMode = Mode::USER;
                 userModeLoop();
+                currentMode = Mode::NONE;
             } else {
                 std::cout << "用户名或密码错误\n";
             }
@@ -781,7 +785,9 @@ void BankUI::run() {
                     system.switchUser(acc->getOwners()[0], "dummy");
                     system.setSilent(false);
                 }
+                currentMode = Mode::CARD;
                 cardModeLoop();
+                currentMode = Mode::NONE;
             } else {
                 std::cout << "账户不存在或密码错误\n";
             }
