@@ -4,11 +4,12 @@
 
 int main() {
     BankSystem bank;
-    Command cmd(bank);
     std::string line;
     while (std::getline(std::cin, line)) {
         if (line.empty()) continue;
-        cmd.execute(line);
+        if (!Command::execute(bank, line)) {
+            Tools::printFailure();
+        }
     }
     return 0;
 }

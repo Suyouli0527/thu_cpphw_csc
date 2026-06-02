@@ -20,6 +20,7 @@ private:
     User* findUser(const std::string &name) const;
     void updateAllAccountsInterest(const Date &newDate);
     void removeAccount(int id);
+    void replayCommands(const std::vector<std::string>& commands);
     void printSuccess() const;
     void printFailure() const;
     bool ownsAccount(int id) const;

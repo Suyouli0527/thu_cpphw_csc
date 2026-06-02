@@ -1,4 +1,5 @@
 #include "banksystem.h"
+#include "command.h"
 #include <iomanip>
 #include <fstream>
 #include <sstream>
@@ -87,6 +88,23 @@ void BankSystem::removeAccount(int id) {
             break;
         }
     }
+}
+
+void BankSystem::replayCommands(const std::vector<std::string>& commands) {
+    m_silent = true;
+    for (const auto &cmd : commands) {
+        // 跳过不改变系统状态的命令
+        std::istringstream iss(cmd);
+        std::string action;
+        iss >> action;
+        if (action == "QUERY" || action == "QUERYALL" || action == "QUERY_USER"
+            || action == "QUERY_USERLIST" || action == "SHOW_DATE" || action == "WHOAMI"
+            || action == "LOG" || action == "ROLLBACK" || action == "SAVE" || action == "RESUME") {
+            continue;
+        }
+        Command::execute(*this, cmd);
+    }
+    m_silent = false;
 }
 
 void BankSystem::printAccountInfo(int id) const {
@@ -325,62 +343,7 @@ void BankSystem::rollback(int n) {
     currentUserName = "default";
     logRecords.clear();
 
-    m_silent = true;
-    for (const auto &cmd : cmdsToReplay) {
-        m_currentCommand = cmd;
-        std::istringstream iss(cmd);
-        std::string action;
-        iss >> action;
-
-        if (action == "OPEN") {
-            int id; char type; std::string name; double balance;
-            iss >> id >> type >> name >> balance;
-            openAccount(id, type, name, balance);
-        } else if (action == "CLOSE") {
-            int id; iss >> id;
-            closeAccount(id);
-        } else if (action == "MODIFY") {
-            std::string subAction;
-            iss >> subAction;
-            if (subAction == "NAME") {
-                int id; std::string name;
-                iss >> id >> name;
-                modifyName(id, name);
-            } else if (subAction == "CREDIT") {
-                int id; double credit;
-                iss >> id >> credit;
-                modifyCredit(id, credit);
-            }
-        } else if (action == "DEPOSIT") {
-            int id; double amount;
-            iss >> id >> amount;
-            deposit(id, amount);
-        } else if (action == "WITHDRAW") {
-            int id; double amount;
-            iss >> id >> amount;
-            withdraw(id, amount);
-        } else if (action == "TRANSFER") {
-            int srcId, dstId; double amount;
-            iss >> srcId >> dstId >> amount;
-            transfer(srcId, dstId, amount);
-        } else if (action == "ADD_DAY") {
-            int days; iss >> days;
-            addDays(days);
-        } else if (action == "SET_DATE") {
-            int y, m, d; iss >> y >> m >> d;
-            setDate(y, m, d);
-        } else if (action == "SWITCH") {
-            std::string username; iss >> username;
-            switchUser(username);
-        } else if (action == "CREATE_USER") {
-            std::string username; iss >> username;
-            createUser(username);
-        } else if (action == "DELETE_USER") {
-            std::string username; iss >> username;
-            deleteUser(username);
-        }
-    }
-    m_silent = false;
+    replayCommands(cmdsToReplay);
 
     printSuccess();
 }
@@ -422,61 +385,7 @@ void BankSystem::resume(const std::string &filename) {
     }
     file.close();
 
-    m_silent = true;
-    for (const auto &cmd : subCommands) {
-        m_currentCommand = cmd;
-        std::istringstream iss(cmd);
-        std::string action;
-        iss >> action;
-
-        if (action == "OPEN") {
-            int id; char type; std::string name; double balance;
-            iss >> id >> type >> name >> balance;
-            openAccount(id, type, name, balance);
-        } else if (action == "CLOSE") {
-            int id; iss >> id;
-            closeAccount(id);
-        } else if (action == "MODIFY") {
-            std::string subAction; iss >> subAction;
-            if (subAction == "NAME") {
-                int id; std::string name;
-                iss >> id >> name;
-                modifyName(id, name);
-            } else if (subAction == "CREDIT") {
-                int id; double credit;
-                iss >> id >> credit;
-                modifyCredit(id, credit);
-            }
-        } else if (action == "DEPOSIT") {
-            int id; double amount;
-            iss >> id >> amount;
-            deposit(id, amount);
-        } else if (action == "WITHDRAW") {
-            int id; double amount;
-            iss >> id >> amount;
-            withdraw(id, amount);
-        } else if (action == "TRANSFER") {
-            int srcId, dstId; double amount;
-            iss >> srcId >> dstId >> amount;
-            transfer(srcId, dstId, amount);
-        } else if (action == "ADD_DAY") {
-            int days; iss >> days;
-            addDays(days);
-        } else if (action == "SET_DATE") {
-            int y, m, d; iss >> y >> m >> d;
-            setDate(y, m, d);
-        } else if (action == "SWITCH") {
-            std::string username; iss >> username;
-            switchUser(username);
-        } else if (action == "CREATE_USER") {
-            std::string username; iss >> username;
-            createUser(username);
-        } else if (action == "DELETE_USER") {
-            std::string username; iss >> username;
-            deleteUser(username);
-        }
-    }
-    m_silent = false;
+    replayCommands(subCommands);
 
     printSuccess();
 }
