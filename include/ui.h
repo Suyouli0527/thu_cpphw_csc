@@ -7,16 +7,14 @@ class BankUI {
 private:
     BankSystem& system;
     Command cmd;
-    enum class Mode { NONE, ADMIN, USER, CARD };
+    enum class Mode { NONE, ADMIN, USER };
     Mode currentMode;
-    int insertedCardId;
 
     std::string getPasswordInput(const std::string &prompt) const;
     void feedback(const std::string &action, bool ok) const;
 
     void adminModeLoop();
     void userModeLoop();
-    void cardModeLoop();
 
     void handleAccount();
     void handleDepositWithdraw();
@@ -57,7 +55,6 @@ private:
     std::string promptLine(const std::string &label) const;
     bool promptInt(const std::string &label, int &out) const;
     bool promptDouble(const std::string &label, double &out) const;
-    std::string injectCardId(const std::string &cmdStr) const;
 
 public:
     BankUI(BankSystem& sys);

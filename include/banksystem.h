@@ -79,7 +79,6 @@ public:
     void setSilent(bool s) { m_silent = s; }
     void setRawCommand(const std::string &cmd) { m_currentCommand = cmd; }
     std::string getCurrentUserName() const { return currentUserName; }
-    Account* findAccountForTest(int id) const { return findAccount(id); }
     bool lastResult() const { return m_lastResult; }
     void resetResult() { m_lastResult = true; }
     static std::string formatAmount(double amount) {
