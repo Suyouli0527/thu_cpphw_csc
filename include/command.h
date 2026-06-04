@@ -28,7 +28,7 @@ public:
         if (cmd == "OPEN") {
             int id; char type; std::string name; double balance;
             if (!(iss >> id >> type >> name >> balance)) return false;
-            int repaymentDay = 0;
+            int repaymentDay = 15;
             if (type == 'C') {
                 if (!(iss >> repaymentDay)) return false;
             }
@@ -104,11 +104,6 @@ public:
             int id, accountPassword; double amount;
             if (!(iss >> id >> amount >> accountPassword)) return false;
             system.consume(id, amount, accountPassword);
-        }
-        else if (cmd == "CASH_ADVANCE") {
-            int id, accountPassword; double amount;
-            if (!(iss >> id >> amount >> accountPassword)) return false;
-            system.cashAdvance(id, amount, accountPassword);
         }
         else if (cmd == "TRANSFER") {
             int srcId, dstId, accountPassword; double amount;

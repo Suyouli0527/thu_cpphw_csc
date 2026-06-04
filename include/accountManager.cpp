@@ -67,7 +67,7 @@ void AccountManager::printAccountInfo(int id) const {
         const CreditAccount* creditAcc = static_cast<const CreditAccount*>(acc);
         std::cout << " " << formatAmount(creditAcc->getCredit())
                   << " " << creditAcc->getRepaymentDay()
-                  << " " << formatAmount(creditAcc->getCashAdvanceDebt())
+                  << " " << formatAmount(creditAcc->getCashDebt())
                   << " " << formatAmount(creditAcc->getConsumeDebt());
     }
     if (acc->getType() == 'S') {
@@ -109,8 +109,10 @@ void AccountManager::printAccountDetail(int id) const {
         const CreditAccount* creditAcc = static_cast<const CreditAccount*>(acc);
         std::cout << "  信用额度: " << formatAmount(creditAcc->getCredit()) << std::endl;
         std::cout << "  还款日: 每月" << creditAcc->getRepaymentDay() << "日" << std::endl;
-        std::cout << "  取现债务: " << formatAmount(creditAcc->getCashAdvanceDebt()) << std::endl;
-        std::cout << "  消费债务: " << formatAmount(creditAcc->getConsumeDebt()) << std::endl;
+        std::cout << "  取现债务: " << formatAmount(creditAcc->getCashDebt()) << std::endl;
+        std::cout << "  消费债务: " << formatAmount(creditAcc->getConsumeDebt())
+                  << " (免息期: " << formatAmount(creditAcc->getConsumeDebtGrace())
+                  << " 逾期: " << formatAmount(creditAcc->getConsumeDebtOverdue()) << ")" << std::endl;
     }
 
     if (acc->getType() == 'S') {

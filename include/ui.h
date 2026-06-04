@@ -34,7 +34,6 @@ private:
     std::string collectFixedDeposit();
     std::string collectFixedWithdraw();
     std::string collectConsume();
-    std::string collectCashAdvance();
     std::string collectModifyName();
     std::string collectModifyCredit();
     std::string collectModifyShared();

@@ -56,10 +56,3 @@ bool TransactionManager::consume(int id, double amount, int accountPassword) {
     CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
     return creditAcc->consume(dateMgr->getCurrentDate(), amount);
 }
-
-bool TransactionManager::cashAdvance(int id, double amount, int accountPassword) {
-    Account* acc = validateAndGet(id, accountPassword);
-    if (!acc || acc->getType() != 'C') return false;
-    CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
-    return creditAcc->cashAdvance(dateMgr->getCurrentDate(), amount);
-}

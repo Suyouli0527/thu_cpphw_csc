@@ -85,7 +85,6 @@ void BankUI::feedback(const std::string &action, bool ok) const {
         else if (upper == "FIXED_DEPOSIT") std::cout << " [定期存款成功]";
         else if (upper == "FIXED_WITHDRAW") std::cout << " [定期部分提前支取成功]";
         else if (upper == "CONSUME") std::cout << " [消费成功]";
-        else if (upper == "CASH_ADVANCE") std::cout << " [取现成功]";
         else if (upper == "MODIFY") std::cout << " [修改成功]";
         else if (upper == "MODIFY_SHARED") std::cout << " [修改共享状态成功]";
         else if (upper == "MODIFY_USERPASSWORD") std::cout << " [用户密码修改成功]";
@@ -103,7 +102,7 @@ void BankUI::feedback(const std::string &action, bool ok) const {
 // ========== Collector 函数 ==========
 
 std::string BankUI::collectOpen() {
-    int id; std::string typeStr, name; double balance; int pwd, sharedInt; int repDay = 0;
+    int id; std::string typeStr, name; double balance; int pwd, sharedInt; int repDay = 15;
     if (!promptInt("请输入账户ID: ", id)) return "";
     while (true) {
         std::string t = promptLine("请输入账户类型 (S=储蓄, C=信用): ");
@@ -113,10 +112,10 @@ std::string BankUI::collectOpen() {
     }
     name = promptLine("请输入账户名称: ");
     if (name.empty()) return "";
-    if (!promptDouble("请输入初始余额: ", balance)) return "";
+    if (!promptDouble(typeStr == "C" ? "请输入信用额度: " : "请输入初始余额: ", balance)) return "";
     if (typeStr == "C") {
         while (true) {
-            if (!promptInt("请输入还款日 (1-28): ", repDay)) return "";
+            if (!promptInt("请输入还款日 (1-28, 默认15): ", repDay)) { repDay = 15; break; }
             if (repDay >= 1 && repDay <= 28) break;
             std::cout << " [还款日须为1-28]" << std::endl;
         }
@@ -216,16 +215,6 @@ std::string BankUI::collectConsume() {
     if (!promptInt("请输入账户密码: ", pwd)) return "";
     std::ostringstream oss;
     oss << "CONSUME " << id << " " << amount << " " << pwd;
-    return oss.str();
-}
-
-std::string BankUI::collectCashAdvance() {
-    int id; double amount; int pwd;
-    if (!promptInt("请输入账户ID: ", id)) return "";
-    if (!promptDouble("请输入取现金额: ", amount)) return "";
-    if (!promptInt("请输入账户密码: ", pwd)) return "";
-    std::ostringstream oss;
-    oss << "CASH_ADVANCE " << id << " " << amount << " " << pwd;
     return oss.str();
 }
 
@@ -443,12 +432,11 @@ void BankUI::handleFixedDeposit() {
 void BankUI::handleCredit() {
     while (true) {
         std::cout << "\n--- 信用账户 ---\n";
-        std::cout << " [1] 消费\n [2] 取现\n [0] 返回\n";
+        std::cout << " [1] 消费\n [0] 返回\n";
         std::string choice = promptLine("请选择: ");
         if (choice == "0") return;
         std::string cmdStr;
         if (choice == "1") cmdStr = collectConsume();
-        else if (choice == "2") cmdStr = collectCashAdvance();
         else { std::cout << " [无效选择]" << std::endl; continue; }
         if (!cmdStr.empty()) executeAndFeedback(cmdStr);
     }

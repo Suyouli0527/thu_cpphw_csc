@@ -73,36 +73,29 @@ public:
 
 };
 
-struct CreditTransaction {
-    double amount;
-    char txnType; 
-    Date date;
-};
-
 class CreditAccount : public Account {
 private:
     double credit;
     int repaymentDay;
-    std::vector<CreditTransaction> transactions;
+    double cash_debt;
+    double consume_debt;
+    double consume_debt_overdue;
     Date lastInterestUpdate;
 
-    double getCashAdvanceDebtInternal() const;
-    double getConsumeDebtInternal() const;
-    Date getRepaymentDate(const Date &current) const;
-    bool isWithinGracePeriod(const Date &txnDate, const Date &checkDate) const;
+    bool isWithinGracePeriod(const Date &consumeDate, const Date &checkDate) const;
 
 public:
     CreditAccount(int id, char type, const std::string &name, double creditAmount, int repDay, const Date &openDate, int pwd, bool isShared);
     bool deposit(const Date &date, double amount) override;
-    bool withdraw(const Date &date, double amount) override;
-    bool consume(const Date &date, double amount);
-    bool cashAdvance(const Date &date, double amount);
+    bool withdraw(const Date &date, double amount) override;  // 透支取现
+    bool consume(const Date &date, double amount);            // 透支消费
     void updateCreditInterest(const Date &targetDate);
     double getCredit() const { return credit; }
     int getRepaymentDay() const { return repaymentDay; }
-    double getTotalDebt() const;
-    double getCashAdvanceDebt() const;
-    double getConsumeDebt() const;
-    const std::vector<CreditTransaction>& getTransactions() const { return transactions; }
+    double getCashDebt() const { return cash_debt; }
+    double getConsumeDebt() const { return consume_debt + consume_debt_overdue; }
+    double getConsumeDebtGrace() const { return consume_debt; }
+    double getConsumeDebtOverdue() const { return consume_debt_overdue; }
     bool modifyCredit(double newCredit);
+    bool modifyRepaymentDay(int newDay);
 };

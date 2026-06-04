@@ -108,109 +108,67 @@ void SavingAccount::updateFixedDeposits(const Date &date) {
 }
 
 CreditAccount::CreditAccount(int id, char, const std::string &name, double creditAmount, int repDay, const Date &openDate, int pwd, bool isShared)
-    : Account(id, 'C', name, 0, openDate, pwd, isShared), credit(creditAmount), repaymentDay(repDay), lastInterestUpdate(openDate) {}
+    : Account(id, 'C', name, 0, openDate, pwd, isShared), credit(creditAmount),
+      repaymentDay(repDay), cash_debt(0), consume_debt(0), consume_debt_overdue(0),
+      lastInterestUpdate(openDate) {}
 
-double CreditAccount::getCashAdvanceDebtInternal() const {
-    double cashDebt = 0;
-    for (const auto &txn : transactions) {
-        if (txn.txnType == 'C') cashDebt += txn.amount;
-        else if (txn.txnType == 'R') {
-            double remain = -txn.amount;
-            if (remain > 0) {
-                if (cashDebt >= remain) {
-                    cashDebt -= remain;
-                } else {
-                    remain -= cashDebt;
-                    cashDebt = 0;
-                }
-            }
-        }
-    }
-    return cashDebt;
-}
-
-double CreditAccount::getConsumeDebtInternal() const {
-    double consumeDebt = 0;
-    double cashDebt = 0;
-    for (const auto &txn : transactions) {
-        if (txn.txnType == 'P') consumeDebt += txn.amount;
-        else if (txn.txnType == 'C') cashDebt += txn.amount;
-        else if (txn.txnType == 'R') {
-            double remain = -txn.amount;
-            if (remain > 0) {
-                if (cashDebt >= remain) {
-                    cashDebt -= remain;
-                } else {
-                    remain -= cashDebt;
-                    cashDebt = 0;
-                    if (consumeDebt >= remain) {
-                        consumeDebt -= remain;
-                    } else {
-                        consumeDebt = 0;
-                    }
-                }
-            }
-        }
-    }
-    return consumeDebt;
-}
-
-Date CreditAccount::getRepaymentDate(const Date &current) const {
-    int y = current.getYear();
-    int m = current.getMonth();
-    Date rep(y, m, repaymentDay);
-    if (rep - current < 0) {
-        m++;
-        if (m > 12) { m = 1; y++; }
-        rep = Date(y, m, repaymentDay);
-    }
-    return rep;
-}
-
-bool CreditAccount::isWithinGracePeriod(const Date &txnDate, const Date &checkDate) const {
-    int txnMonth = txnDate.getMonth();
-    int txnYear = txnDate.getYear();
-    int nextMonth = txnMonth + 1;
-    int nextYear = txnYear;
-    if (nextMonth > 12) { nextMonth = 1; nextYear++; }
-    Date graceDeadline(nextYear, nextMonth, repaymentDay);
+bool CreditAccount::isWithinGracePeriod(const Date &consumeDate, const Date &checkDate) const {
+    // 消费所在月的下一个月的 repaymentDay 为免息截止日
+    int y = consumeDate.getYear();
+    int m = consumeDate.getMonth();
+    m++;
+    if (m > 12) { m = 1; y++; }
+    // 处理特殊日期（如 31 日在 2 月不存在，取当月最大天数）
+    int maxDay = Date::daysInMonth(y, m);
+    int day = std::min(repaymentDay, maxDay);
+    Date graceDeadline(y, m, day);
     return checkDate - graceDeadline < 0;
 }
 
-double CreditAccount::getTotalDebt() const {
-    return getCashAdvanceDebt() + getConsumeDebt();
-}
-
-double CreditAccount::getCashAdvanceDebt() const {
-    return getCashAdvanceDebtInternal();
-}
-
-double CreditAccount::getConsumeDebt() const {
-    return getConsumeDebtInternal();
-}
-
-bool CreditAccount::deposit(const Date &date, double amount) {
+bool CreditAccount::deposit(const Date &, double amount) {
     if (amount < 0) return false;
     balance += amount;
-    transactions.push_back({-amount, 'R', date});
+    // 余额为负时说明还在透支，无需冲抵债务
+    // 余额为正时，多出的部分用来冲抵已有债务
+    double remain = balance;
+    if (remain <= 0) return true;  // 还在透支中，不冲抵
+    // 先还取现债务
+    if (cash_debt > 0 && remain > 0) {
+        if (cash_debt >= remain) { cash_debt -= remain; remain = 0; }
+        else { remain -= cash_debt; cash_debt = 0; }
+    }
+    // 再还已出免息期的消费债务
+    if (remain > 0 && consume_debt_overdue > 0) {
+        if (consume_debt_overdue >= remain) { consume_debt_overdue -= remain; remain = 0; }
+        else { remain -= consume_debt_overdue; consume_debt_overdue = 0; }
+    }
+    // 最后还免息期内的消费债务
+    if (remain > 0 && consume_debt > 0) {
+        if (consume_debt >= remain) { consume_debt -= remain; remain = 0; }
+        else { consume_debt = 0; }
+    }
     return true;
 }
 
-bool CreditAccount::withdraw(const Date &date, double amount) {
-    return cashAdvance(date, amount);
-}
-
-bool CreditAccount::consume(const Date &date, double amount) {
+bool CreditAccount::withdraw(const Date &, double amount) {
     if (amount < 0 || amount > balance + credit) return false;
     balance -= amount;
-    transactions.push_back({amount, 'P', date});
+    // 透支取现：只有透支部分计入取现债务
+    if (balance < 0) {
+        double overdraft = -balance;
+        cash_debt += overdraft;
+    }
     return true;
 }
 
-bool CreditAccount::cashAdvance(const Date &date, double amount) {
+bool CreditAccount::consume(const Date &, double amount) {
     if (amount < 0 || amount > balance + credit) return false;
     balance -= amount;
-    transactions.push_back({amount, 'C', date});
+    // 透支消费：只有透支部分计入消费债务
+    if (balance < 0) {
+        double overdraft = -balance;
+        consume_debt += overdraft;
+    }
     return true;
 }
 
@@ -220,25 +178,20 @@ void CreditAccount::updateCreditInterest(const Date &targetDate) {
     while (current - targetDate < 0) {
         Date next = current;
         next.addDays(1);
+
+        // 检查是否过了还款日：若 next 是还款日，则上月消费移出免息期
+        int maxDay = Date::daysInMonth(next.getYear(), next.getMonth());
+        int day = std::min(repaymentDay, maxDay);
+        if (next.getDay() == day) {
+            consume_debt_overdue += consume_debt;
+            consume_debt = 0;
+        }
+
         double dailyInterest = 0;
-
-
-        for (const auto &txn : transactions) {
-            if (txn.txnType != 'C') continue;
-            Date interestStart = txn.date;
-            interestStart.addDays(1);
-            if (next - interestStart >= 0) {
-                dailyInterest += txn.amount * InterestCalculator::debtRate;
-            }
-        }
-
-
-        for (const auto &txn : transactions) {
-            if (txn.txnType != 'P') continue;
-            if (!isWithinGracePeriod(txn.date, next)) {
-                dailyInterest += txn.amount * InterestCalculator::debtRate;
-            }
-        }
+        // 取现债务：全部按日计息
+        dailyInterest += cash_debt * InterestCalculator::debtRate;
+        // 消费债务：只有已出免息期的按日计息
+        dailyInterest += consume_debt_overdue * InterestCalculator::debtRate;
 
         balance -= dailyInterest;
         current = next;
@@ -248,5 +201,11 @@ void CreditAccount::updateCreditInterest(const Date &targetDate) {
 
 bool CreditAccount::modifyCredit(double newCredit) {
     credit = newCredit;
+    return true;
+}
+
+bool CreditAccount::modifyRepaymentDay(int newDay) {
+    if (newDay < 1 || newDay > 28) return false;
+    repaymentDay = newDay;
     return true;
 }

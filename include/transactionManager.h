@@ -22,5 +22,4 @@ public:
     bool fixedDeposit(int id, double amount, int months, int accountPassword);
     bool fixedWithdraw(int id, double amount, int accountPassword);
     bool consume(int id, double amount, int accountPassword);
-    bool cashAdvance(int id, double amount, int accountPassword);
 };
