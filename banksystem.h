@@ -3,33 +3,27 @@
 #include "user.h"
 #include "account.h"
 #include "tools.h"
+#include "accountManager.h"
+#include "userManager.h"
+#include "dateManager.h"
+#include "transactionManager.h"
+#include "logManager.h"
 #include <vector>
 #include <string>
 
 class BankSystem {
 private:
-    Date currentDate;
-    std::string currentUserName;
-    std::vector<User> users;
-    std::vector<Account*> accounts;
-    std::vector<std::string> logRecords;
-    bool m_silent = false;
-    std::string m_currentCommand;
+    AccountManager accountMgr;
+    UserManager userMgr;
+    DateManager dateMgr;
+    LogManager logMgr;
+    TransactionManager transactionMgr;
 
-    Account* findAccount(int id) const;
-    User* findUser(const std::string &name) const;
-    void updateAllAccountsInterest(const Date &newDate);
-    void removeAccount(int id);
     void replayCommands(const std::vector<std::string>& commands);
-    void printSuccess() const;
-    void printFailure() const;
-    bool ownsAccount(int id) const;
-    void printAccountInfo(int id) const;
 
 public:
     BankSystem();
     ~BankSystem();
-    void clearAccounts();
 
     BankSystem(const BankSystem&) = delete;
     BankSystem& operator=(const BankSystem&) = delete;
@@ -61,10 +55,10 @@ public:
     void saveLog(const std::string &filename) const;
     void resume(const std::string &filename);
 
-    bool isLoggedIn() const { return !currentUserName.empty(); }
-    bool isAdmin() const;
-    bool isLegalName(const std::string &name) const;
-    bool isInitialState() const { return logRecords.empty(); }
-    void setSilent(bool s) { m_silent = s; }
-    void setRawCommand(const std::string &cmd) { m_currentCommand = cmd; }
+    bool isLoggedIn() const { return userMgr.isLoggedIn(); }
+    bool isAdmin() const { return userMgr.isAdmin(); }
+    bool isLegalName(const std::string &name) const { return UserManager::isLegalName(name); }
+    bool isInitialState() const { return logMgr.isInitialState(); }
+    void setSilent(bool s) { logMgr.setSilent(s); }
+    void setRawCommand(const std::string &cmd) { logMgr.setRawCommand(cmd); }
 };

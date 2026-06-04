@@ -15,7 +15,6 @@ private:
     }
 
 public:
-    // 静态命令解析与执行，成功返回 true，解析失败返回 false
     static bool execute(BankSystem &system, const std::string &command) {
         system.setRawCommand(command);
         std::istringstream iss(command);
