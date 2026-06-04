@@ -2,8 +2,39 @@
 #include "tools.h"
 #include <iostream>
 
+const double AccountManager::savingRate = 0.0115;
+const double AccountManager::creditRate = 0.0225;
+const double AccountManager::debtRate = 0.0005;
+
+double AccountManager::calcDailyInterest(char type, double balance, const Date &date) {
+    double dailyRate;
+    switch (type) {
+        case 'S':
+            dailyRate = savingRate / date.daysInYear();
+            break;
+        case 'C':
+            if (balance >= 0) {
+                dailyRate = creditRate / date.daysInYear();
+            } else {
+                dailyRate = debtRate;
+            }
+            break;
+        default:
+            return 0;
+    }
+    return balance * dailyRate;
+}
+
+AccountManager::AccountManager() : currentDate(1970, 1, 1) {}
+
 AccountManager::~AccountManager() {
     clearAccounts();
+}
+
+void AccountManager::updateAllAccountsInterest(const Date &newDate) {
+    for (auto acc : accounts) {
+        acc->updateInterest(newDate);
+    }
 }
 
 Account* AccountManager::findAccount(int id) const {
@@ -52,4 +83,46 @@ void AccountManager::printAccountInfo(int id) const {
         std::cout << " " << Tools::formatAmount(creditAcc->getCredit());
     }
     std::cout << std::endl;
+}
+
+void AccountManager::showDate() const {
+    currentDate.showDate();
+}
+
+bool AccountManager::addDays(int days) {
+    if (!currentDate.addDays(days)) return false;
+    updateAllAccountsInterest(currentDate);
+    return true;
+}
+
+bool AccountManager::setDate(int year, int month, int day) {
+    if (!currentDate.setDate(year, month, day)) return false;
+    updateAllAccountsInterest(currentDate);
+    return true;
+}
+
+void AccountManager::reset() {
+    currentDate = Date(1970, 1, 1);
+}
+
+bool AccountManager::deposit(int id, double amount) {
+    Account* acc = findAccount(id);
+    if (!acc) return false;
+    return acc->deposit(currentDate, amount);
+}
+
+bool AccountManager::withdraw(int id, double amount) {
+    Account* acc = findAccount(id);
+    if (!acc) return false;
+    return acc->withdraw(currentDate, amount);
+}
+
+bool AccountManager::transfer(int srcId, int dstId, double amount) {
+    if (srcId == dstId) return false;
+    Account* srcAcc = findAccount(srcId);
+    Account* dstAcc = findAccount(dstId);
+    if (!srcAcc || !dstAcc) return false;
+    if (!srcAcc->withdraw(currentDate, amount)) return false;
+    dstAcc->deposit(currentDate, amount);
+    return true;
 }

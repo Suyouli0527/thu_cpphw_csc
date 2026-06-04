@@ -2,11 +2,8 @@
 #include "date.h"
 #include "user.h"
 #include "account.h"
-#include "tools.h"
 #include "accountManager.h"
 #include "userManager.h"
-#include "dateManager.h"
-#include "transactionManager.h"
 #include "logManager.h"
 #include <vector>
 #include <string>
@@ -15,11 +12,10 @@ class BankSystem {
 private:
     AccountManager accountMgr;
     UserManager userMgr;
-    DateManager dateMgr;
     LogManager logMgr;
-    TransactionManager transactionMgr;
 
     void replayCommands(const std::vector<std::string>& commands);
+    bool requireAccount(int id) const;
 
 public:
     BankSystem();
@@ -61,4 +57,5 @@ public:
     bool isInitialState() const { return logMgr.isInitialState(); }
     void setSilent(bool s) { logMgr.setSilent(s); }
     void setRawCommand(const std::string &cmd) { logMgr.setRawCommand(cmd); }
+    const std::string& getCurrentCommand() const { return logMgr.getCurrentCommand(); }
 };
