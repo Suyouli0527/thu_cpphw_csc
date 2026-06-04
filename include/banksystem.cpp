@@ -1,111 +1,355 @@
 #include "banksystem.h"
 #include "command.h"
 #include <iostream>
-#include <iomanip>
 #include <fstream>
 #include <sstream>
 #include <algorithm>
 
-BankSystem::BankSystem() : currentDate(1970, 1, 1), currentUserName("default") {
-    users.emplace_back("admin", UserType::admin, "admin");
-    users.emplace_back("default", UserType::normal, "default");
-}
+BankSystem::BankSystem()
+    : accountMgr(), userMgr(&accountMgr), dateMgr(&accountMgr), logMgr(),
+      transactionMgr(&accountMgr, &userMgr, &dateMgr) {}
 
 BankSystem::~BankSystem() {
-    clearAccounts();
 }
 
-void BankSystem::clearAccounts() {
-    for (auto acc : accounts) {
-        delete acc;
+void BankSystem::openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay, int accountPassword, bool shared) {
+    if (id <= 0) { logMgr.printFailure(); return; }
+    if (accountMgr.findAccount(id) != nullptr) { logMgr.printFailure(); return; }
+    if (type != 'S' && type != 'C') { logMgr.printFailure(); return; }
+    if (accountName.empty()) { logMgr.printFailure(); return; }
+    if (balance < 0) { logMgr.printFailure(); return; }
+    if (type == 'C' && (repaymentDay < 1 || repaymentDay > 28)) { logMgr.printFailure(); return; }
+    if (accountPassword < 100000 || accountPassword > 999999) { logMgr.printFailure(); return; }
+
+    Account* newAccount = nullptr;
+    if (type == 'S') {
+        newAccount = new SavingAccount(id, type, accountName, balance, dateMgr.getCurrentDate(), accountPassword, shared);
+    } else {
+        newAccount = new CreditAccount(id, type, accountName, balance, repaymentDay, dateMgr.getCurrentDate(), accountPassword, shared);
     }
-    accounts.clear();
+    newAccount->addOwner(userMgr.getCurrentUserName());
+    if (!accountMgr.addAccount(newAccount)) {
+        delete newAccount;
+        logMgr.printFailure();
+        return;
+    }
+    userMgr.addAccountToUser(userMgr.getCurrentUserName(), id);
+    logMgr.printSuccess();
+    logMgr.recordLog(logMgr.getCurrentCommand());
 }
 
-void BankSystem::printSuccess() const {
-    m_lastResult = true;
+void BankSystem::closeAccount(int id, int accountPassword) {
+    Account* acc = accountMgr.findAccount(id);
+    if (!acc || !userMgr.ownsAccount(id)) { logMgr.printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { logMgr.printFailure(); return; }
+    if (acc->getBalance() != 0) { logMgr.printFailure(); return; }
+    if (acc->getType() == 'S') {
+        SavingAccount* sa = static_cast<SavingAccount*>(acc);
+        if (sa->getFixedDepositCount() > 0) { logMgr.printFailure(); return; }
+    }
+    for (const auto &ownerName : acc->getOwners()) {
+        userMgr.removeAccountFromUser(ownerName, id);
+    }
+    accountMgr.removeAccount(id);
+    logMgr.printSuccess();
+    logMgr.recordLog(logMgr.getCurrentCommand());
 }
 
-void BankSystem::printFailure() const {
-    m_lastResult = false;
+void BankSystem::addOwner(int id, const std::string &userName) {
+    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    Account* acc = accountMgr.findAccount(id);
+    if (!acc) { logMgr.printFailure(); return; }
+    if (!acc->isShared()) { logMgr.printFailure(); return; }
+    User* targetUser = userMgr.findUser(userName);
+    if (!targetUser) { logMgr.printFailure(); return; }
+    auto before = acc->getOwners().size();
+    acc->addOwner(userName);
+    if (acc->getOwners().size() == before) { logMgr.printFailure(); return; }
+    targetUser->addAccountID(id);
+    logMgr.printSuccess();
+    logMgr.recordLog(logMgr.getCurrentCommand());
 }
 
-User* BankSystem::findUser(const std::string &name) const {
-    for (const auto &user : users) {
-        if (user.getUserName() == name) {
-            return const_cast<User*>(&user);
+void BankSystem::removeOwner(int id, const std::string &userName) {
+    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    Account* acc = accountMgr.findAccount(id);
+    if (!acc) { logMgr.printFailure(); return; }
+    if (!acc->isShared()) { logMgr.printFailure(); return; }
+    auto before = acc->getOwners().size();
+    acc->removeOwner(userName);
+    if (acc->getOwners().size() == before) { logMgr.printFailure(); return; }
+    User* targetUser = userMgr.findUser(userName);
+    if (targetUser) targetUser->removeAccountID(id);
+    logMgr.printSuccess();
+    logMgr.recordLog(logMgr.getCurrentCommand());
+}
+
+void BankSystem::modifyName(int id, const std::string &username, int accountPassword) {
+    Account* acc = accountMgr.findAccount(id);
+    if (!acc || !userMgr.ownsAccount(id)) { logMgr.printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { logMgr.printFailure(); return; }
+    if (username.empty()) { logMgr.printFailure(); return; }
+    acc->modifyName(username);
+    logMgr.printSuccess();
+    logMgr.recordLog(logMgr.getCurrentCommand());
+}
+
+void BankSystem::modifyCredit(int id, double newCredit, int accountPassword) {
+    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    Account* acc = accountMgr.findAccount(id);
+    if (!acc || !userMgr.ownsAccount(id)) { logMgr.printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { logMgr.printFailure(); return; }
+    if (acc->getType() != 'C') { logMgr.printFailure(); return; }
+    if (newCredit < 0) { logMgr.printFailure(); return; }
+    CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
+    creditAcc->modifyCredit(newCredit);
+    logMgr.printSuccess();
+    logMgr.recordLog(logMgr.getCurrentCommand());
+}
+
+void BankSystem::modifyShared(int id, bool shared) {
+    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    Account* acc = accountMgr.findAccount(id);
+    if (!acc) { logMgr.printFailure(); return; }
+    acc->setShared(shared);
+    logMgr.printSuccess();
+    logMgr.recordLog(logMgr.getCurrentCommand());
+}
+
+void BankSystem::changeUserPassword(const std::string &oldPassword, const std::string &newPassword) {
+    User* user = userMgr.findUser(userMgr.getCurrentUserName());
+    if (!user) { logMgr.printFailure(); return; }
+    if (!user->changePassword(oldPassword, newPassword)) { logMgr.printFailure(); return; }
+    logMgr.printSuccess();
+    logMgr.recordLog(logMgr.getCurrentCommand());
+}
+
+void BankSystem::changeAccountPassword(int id, int oldPassword, int newPassword) {
+    Account* acc = accountMgr.findAccount(id);
+    if (!acc || !userMgr.ownsAccount(id)) { logMgr.printFailure(); return; }
+    if (!acc->changeAccountPassword(oldPassword, newPassword)) { logMgr.printFailure(); return; }
+    logMgr.printSuccess();
+    logMgr.recordLog(logMgr.getCurrentCommand());
+}
+
+void BankSystem::query(int id, int accountPassword) const {
+    Account* acc = accountMgr.findAccount(id);
+    if (!acc || !userMgr.ownsAccount(id)) { logMgr.printFailure(); return; }
+    if (!acc->verifyAccountPassword(accountPassword)) { logMgr.printFailure(); return; }
+    accountMgr.printAccountDetail(id);
+}
+
+void BankSystem::queryAllAccounts() const {
+    User* user = userMgr.findUser(userMgr.getCurrentUserName());
+    if (!user) { logMgr.printFailure(); return; }
+    std::vector<int> ids = user->getAccountIDs();
+    if (ids.empty()) { logMgr.printFailure(); return; }
+    std::sort(ids.begin(), ids.end());
+    for (int id : ids) {
+        accountMgr.printAccountInfo(id);
+    }
+}
+
+void BankSystem::deposit(int id, double amount, int accountPassword) {
+    if (transactionMgr.deposit(id, amount, accountPassword)) {
+        logMgr.printSuccess();
+        logMgr.recordLog(logMgr.getCurrentCommand());
+    } else {
+        logMgr.printFailure();
+    }
+}
+
+void BankSystem::withdraw(int id, double amount, int accountPassword) {
+    if (transactionMgr.withdraw(id, amount, accountPassword)) {
+        logMgr.printSuccess();
+        logMgr.recordLog(logMgr.getCurrentCommand());
+    } else {
+        logMgr.printFailure();
+    }
+}
+
+void BankSystem::transfer(int srcId, int dstId, double amount, int srcAccountPassword) {
+    if (transactionMgr.transfer(srcId, dstId, amount, srcAccountPassword)) {
+        logMgr.printSuccess();
+        logMgr.recordLog(logMgr.getCurrentCommand());
+    } else {
+        logMgr.printFailure();
+    }
+}
+
+void BankSystem::fixedDeposit(int id, double amount, int months, int accountPassword) {
+    if (transactionMgr.fixedDeposit(id, amount, months, accountPassword)) {
+        logMgr.printSuccess();
+        logMgr.recordLog(logMgr.getCurrentCommand());
+    } else {
+        logMgr.printFailure();
+    }
+}
+
+void BankSystem::fixedWithdraw(int id, double amount, int accountPassword) {
+    if (transactionMgr.fixedWithdraw(id, amount, accountPassword)) {
+        logMgr.printSuccess();
+        logMgr.recordLog(logMgr.getCurrentCommand());
+    } else {
+        logMgr.printFailure();
+    }
+}
+
+void BankSystem::consume(int id, double amount, int accountPassword) {
+    if (transactionMgr.consume(id, amount, accountPassword)) {
+        logMgr.printSuccess();
+        logMgr.recordLog(logMgr.getCurrentCommand());
+    } else {
+        logMgr.printFailure();
+    }
+}
+
+void BankSystem::cashAdvance(int id, double amount, int accountPassword) {
+    if (transactionMgr.cashAdvance(id, amount, accountPassword)) {
+        logMgr.printSuccess();
+        logMgr.recordLog(logMgr.getCurrentCommand());
+    } else {
+        logMgr.printFailure();
+    }
+}
+
+void BankSystem::showDate() const {
+    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    dateMgr.showDate();
+}
+
+void BankSystem::addDays(int days) {
+    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    if (dateMgr.addDays(days)) {
+        logMgr.printSuccess();
+        logMgr.recordLog(logMgr.getCurrentCommand());
+    } else {
+        logMgr.printFailure();
+    }
+}
+
+void BankSystem::setDate(int year, int month, int day) {
+    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    if (dateMgr.setDate(year, month, day)) {
+        logMgr.printSuccess();
+        logMgr.recordLog(logMgr.getCurrentCommand());
+    } else {
+        logMgr.printFailure();
+    }
+}
+
+void BankSystem::createUser(const std::string &username, const std::string &password) {
+    if (userMgr.createUser(username, password)) {
+        logMgr.printSuccess();
+        logMgr.recordLog(logMgr.getCurrentCommand());
+    } else {
+        logMgr.printFailure();
+    }
+}
+
+void BankSystem::deleteUser(const std::string &username) {
+    if (userMgr.deleteUser(username)) {
+        logMgr.printSuccess();
+        logMgr.recordLog(logMgr.getCurrentCommand());
+    } else {
+        logMgr.printFailure();
+    }
+}
+
+void BankSystem::queryUser(const std::string &username) const {
+    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    User* user = userMgr.findUser(username);
+    if (!user) { logMgr.printFailure(); return; }
+    std::vector<int> ids = user->getAccountIDs();
+    if (ids.empty()) { logMgr.printFailure(); return; }
+    std::sort(ids.begin(), ids.end());
+    for (int id : ids) {
+        accountMgr.printAccountInfo(id);
+    }
+}
+
+void BankSystem::queryAllUser() const {
+    if (!userMgr.queryAllUser()) {
+        logMgr.printFailure();
+    }
+}
+
+void BankSystem::switchUser(const std::string &username, const std::string &password) {
+    if (userMgr.switchUser(username, password)) {
+        logMgr.printSuccess();
+        logMgr.recordLog(logMgr.getCurrentCommand());
+    } else {
+        logMgr.printFailure();
+    }
+}
+
+void BankSystem::whoami() const {
+    userMgr.whoami();
+}
+
+void BankSystem::showLog() const {
+    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    logMgr.showLog();
+}
+
+void BankSystem::rollback(int n) {
+    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    if (n < 0 || n > (int)logMgr.getLogRecords().size()) {
+        logMgr.printFailure();
+        return;
+    }
+
+    std::vector<std::string> cmdsToReplay(logMgr.getLogRecords().begin(),
+                                           logMgr.getLogRecords().begin() + n);
+
+    accountMgr.clearAccounts();
+    userMgr.reset();
+    dateMgr.reset();
+    logMgr.clear();
+
+    replayCommands(cmdsToReplay);
+
+    logMgr.printSuccess();
+}
+
+void BankSystem::saveLog(const std::string &filename) const {
+    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    logMgr.saveLog(filename);
+}
+
+void BankSystem::resume(const std::string &filename) {
+    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    if (!logMgr.isInitialState()) {
+        logMgr.printFailure();
+        return;
+    }
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        logMgr.printFailure();
+        return;
+    }
+    std::vector<std::string> subCommands;
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.empty()) continue;
+        auto pos = line.find(' ');
+        if (pos == std::string::npos) {
+            logMgr.printFailure();
+            return;
         }
+        subCommands.push_back(line.substr(pos + 1));
     }
-    return nullptr;
-}
+    file.close();
 
-Account* BankSystem::findAccount(int id) const {
-    for (auto acc : accounts) {
-        if (acc->getId() == id) {
-            return acc;
-        }
-    }
-    return nullptr;
-}
+    replayCommands(subCommands);
 
-bool BankSystem::ownsAccount(int id) const {
-    Account* acc = findAccount(id);
-    if (!acc) return false;
-    for (const auto &o : acc->getOwners()) {
-        if (o == currentUserName) return true;
-    }
-    return false;
-}
-
-bool BankSystem::isAdmin() const {
-    User* user = findUser(currentUserName);
-    return user != nullptr && user->isAdmin();
-}
-
-bool BankSystem::isLegalName(const std::string &name) const {
-    if (name.empty()) return false;
-    for (char c : name) {
-        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))) {
-            return false;
-        }
-    }
-    return true;
-}
-
-void BankSystem::updateAllAccountsInterest(const Date &newDate) {
-    for (auto acc : accounts) {
-        if (acc->getType() == 'S') {
-            acc->updateInterest(newDate);
-            SavingAccount* sa = static_cast<SavingAccount*>(acc);
-            sa->updateFixedDeposits(newDate);
-        } else if (acc->getType() == 'C') {
-            static_cast<CreditAccount*>(acc)->updateCreditInterest(newDate);
-        }
-    }
-}
-
-void BankSystem::removeAccount(int id) {
-    Account* acc = findAccount(id);
-    if (acc) {
-        for (const auto &ownerName : acc->getOwners()) {
-            User* owner = findUser(ownerName);
-            if (owner) owner->removeAccountID(id);
-        }
-    }
-    for (auto it = accounts.begin(); it != accounts.end(); ++it) {
-        if ((*it)->getId() == id) {
-            delete *it;
-            accounts.erase(it);
-            break;
-        }
-    }
+    logMgr.printSuccess();
 }
 
 void BankSystem::replayCommands(const std::vector<std::string>& commands) {
-    m_silent = true;
+    logMgr.setSilent(true);
     std::string ignored;
     for (const auto &cmd : commands) {
-        // 跳过不改变系统状态的命令
         std::istringstream iss(cmd);
         std::string action;
         iss >> action;
@@ -116,485 +360,5 @@ void BankSystem::replayCommands(const std::vector<std::string>& commands) {
         }
         Command::execute(*this, cmd, ignored);
     }
-    m_silent = false;
-}
-
-void BankSystem::printAccountInfo(int id) const {
-    Account* acc = findAccount(id);
-    if (!acc) return;
-
-    std::cout << acc->getId() << " "
-              << acc->getType() << " "
-              << acc->getName() << " "
-              << BankSystem::formatAmount(acc->getBalance());
-    if (acc->isShared()) {
-        std::cout << " SHARED";
-        for (const auto &o : acc->getOwners()) {
-            std::cout << " " << o;
-        }
-    } else {
-        std::cout << " NOT_SHARED";
-    }
-    if (acc->getType() == 'C') {
-        const CreditAccount* creditAcc = static_cast<const CreditAccount*>(acc);
-        std::cout << " " << BankSystem::formatAmount(creditAcc->getCredit())
-                  << " " << creditAcc->getRepaymentDay()
-                  << " " << BankSystem::formatAmount(creditAcc->getCashAdvanceDebt())
-                  << " " << BankSystem::formatAmount(creditAcc->getConsumeDebt());
-    }
-    if (acc->getType() == 'S') {
-        const SavingAccount* savingAcc = static_cast<const SavingAccount*>(acc);
-        std::cout << " " << savingAcc->getFixedDepositCount();
-        for (const auto& fd : savingAcc->getFixedDeposits()) {
-            std::cout << " " << fd.months << " "
-                      << BankSystem::formatAmount(fd.principal) << " "
-                      << fd.depositDate.getYear() << "-"
-                      << fd.depositDate.getMonth() << "-"
-                      << fd.depositDate.getDay() << " "
-                      << fd.maturityDate.getYear() << "-"
-                      << fd.maturityDate.getMonth() << "-"
-                      << fd.maturityDate.getDay() << " "
-                      << (fd.partiallyWithdrawn ? "1" : "0");
-        }
-    }
-    std::cout << std::endl;
-}
-
-void BankSystem::printAccountDetail(int id) const {
-    Account* acc = findAccount(id);
-    if (!acc) return;
-
-    std::cout << "  账户ID: " << acc->getId() << std::endl;
-    std::cout << "  类型: " << (acc->getType() == 'S' ? "储蓄账户" : "信用账户") << std::endl;
-    std::cout << "  名称: " << acc->getName() << std::endl;
-    std::cout << "  余额: " << BankSystem::formatAmount(acc->getBalance()) << std::endl;
-    std::cout << "  共享: " << (acc->isShared() ? "是" : "否");
-    if (acc->isShared()) {
-        std::cout << "  共有人:";
-        for (const auto &o : acc->getOwners()) {
-            std::cout << " " << o;
-        }
-    }
-    std::cout << std::endl;
-
-    if (acc->getType() == 'C') {
-        const CreditAccount* creditAcc = static_cast<const CreditAccount*>(acc);
-        std::cout << "  信用额度: " << BankSystem::formatAmount(creditAcc->getCredit()) << std::endl;
-        std::cout << "  还款日: 每月" << creditAcc->getRepaymentDay() << "日" << std::endl;
-        std::cout << "  取现债务: " << BankSystem::formatAmount(creditAcc->getCashAdvanceDebt()) << std::endl;
-        std::cout << "  消费债务: " << BankSystem::formatAmount(creditAcc->getConsumeDebt()) << std::endl;
-    }
-
-    if (acc->getType() == 'S') {
-        const SavingAccount* savingAcc = static_cast<const SavingAccount*>(acc);
-
-        std::cout << "  定期存款: " << savingAcc->getFixedDepositCount() << "笔" << std::endl;
-        for (auto i = 0; i < savingAcc->getFixedDeposits().size(); i++) {
-            const FixedDeposit& fd = savingAcc->getFixedDeposits()[i];
-            std::cout << "    [" << i << "] 本金:" << BankSystem::formatAmount(fd.principal)
-                      << " 期限:" << fd.months << "月"
-                      << " 存入:" << fd.depositDate.getYear() << "-"
-                      << fd.depositDate.getMonth() << "-" << fd.depositDate.getDay()
-                      << " 到期:" << fd.maturityDate.getYear() << "-"
-                      << fd.maturityDate.getMonth() << "-" << fd.maturityDate.getDay()
-                      << (fd.partiallyWithdrawn ? " [已部分支取]" : "")
-                      << std::endl;
-        }
-    }
-}
-
-void BankSystem::openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay, int accountPassword, bool shared) {
-    if (id <= 0) { printFailure(); return; }
-    if (findAccount(id) != nullptr) { printFailure(); return; }
-    if (type != 'S' && type != 'C') { printFailure(); return; }
-    if (accountName.empty()) { printFailure(); return; }
-    if (balance < 0) { printFailure(); return; }
-    if (type == 'C' && (repaymentDay < 1 || repaymentDay > 28)) { printFailure(); return; }
-    if (accountPassword < 100000 || accountPassword > 999999) { printFailure(); return; }
-
-    Account* newAccount = nullptr;
-    if (type == 'S') {
-        newAccount = new SavingAccount(id, type, accountName, balance, currentDate, accountPassword, shared);
-    } else {
-        newAccount = new CreditAccount(id, type, accountName, balance, repaymentDay, currentDate, accountPassword, shared);
-    }
-    newAccount->addOwner(currentUserName);
-    accounts.push_back(newAccount);
-    User* user = findUser(currentUserName);
-    if (user) user->addAccountID(id);
-    printSuccess();
-    logRecords.push_back(m_currentCommand);
-}
-
-void BankSystem::closeAccount(int id, int accountPassword) {
-    Account* acc = findAccount(id);
-    if (!acc || !ownsAccount(id)) { printFailure(); return; }
-    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
-    if (acc->getBalance() != 0) { printFailure(); return; }
-    if (acc->getType() == 'S') {
-        SavingAccount* sa = static_cast<SavingAccount*>(acc);
-        if (sa->getFixedDepositCount() > 0) { printFailure(); return; }
-    }
-    removeAccount(id);
-    printSuccess();
-    logRecords.push_back(m_currentCommand);
-}
-
-void BankSystem::addOwner(int id, const std::string &userName) {
-    if (!isAdmin()) { printFailure(); return; }
-    Account* acc = findAccount(id);
-    if (!acc) { printFailure(); return; }
-    if (!acc->isShared()) { printFailure(); return; }
-    User* targetUser = findUser(userName);
-    if (!targetUser) { printFailure(); return; }
-    auto before = acc->getOwners().size();
-    acc->addOwner(userName);
-    if (acc->getOwners().size() == before) { printFailure(); return; }
-    targetUser->addAccountID(id);
-    printSuccess();
-    logRecords.push_back(m_currentCommand);
-}
-
-void BankSystem::removeOwner(int id, const std::string &userName) {
-    if (!isAdmin()) { printFailure(); return; }
-    Account* acc = findAccount(id);
-    if (!acc) { printFailure(); return; }
-    if (!acc->isShared()) { printFailure(); return; }
-    auto before = acc->getOwners().size();
-    acc->removeOwner(userName);
-    if (acc->getOwners().size() == before) { printFailure(); return; }
-    User* targetUser = findUser(userName);
-    if (targetUser) targetUser->removeAccountID(id);
-    printSuccess();
-    logRecords.push_back(m_currentCommand);
-}
-
-void BankSystem::modifyName(int id, const std::string &username, int accountPassword) {
-    Account* acc = findAccount(id);
-    if (!acc || !ownsAccount(id)) { printFailure(); return; }
-    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
-    if (username.empty()) { printFailure(); return; }
-    acc->modifyName(username);
-    printSuccess();
-    logRecords.push_back(m_currentCommand);
-}
-
-void BankSystem::modifyCredit(int id, double newCredit, int accountPassword) {
-    if (!isAdmin()) { printFailure(); return; }
-    Account* acc = findAccount(id);
-    if (!acc || !ownsAccount(id)) { printFailure(); return; }
-    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
-    if (acc->getType() != 'C') { printFailure(); return; }
-    if (newCredit < 0) { printFailure(); return; }
-    CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
-    creditAcc->modifyCredit(newCredit);
-    printSuccess();
-    logRecords.push_back(m_currentCommand);
-}
-
-void BankSystem::modifyShared(int id, bool shared) {
-    if (!isAdmin()) { printFailure(); return; }
-    Account* acc = findAccount(id);
-    if (!acc) { printFailure(); return; }
-    acc->setShared(shared);
-    printSuccess();
-    logRecords.push_back(m_currentCommand);
-}
-
-void BankSystem::changeUserPassword(const std::string &oldPassword, const std::string &newPassword) {
-    User* user = findUser(currentUserName);
-    if (!user) { printFailure(); return; }
-    if (!user->changePassword(oldPassword, newPassword)) { printFailure(); return; }
-    printSuccess();
-    logRecords.push_back(m_currentCommand);
-}
-
-void BankSystem::changeAccountPassword(int id, int oldPassword, int newPassword) {
-    Account* acc = findAccount(id);
-    if (!acc || !ownsAccount(id)) { printFailure(); return; }
-    if (!acc->changeAccountPassword(oldPassword, newPassword)) { printFailure(); return; }
-    printSuccess();
-    logRecords.push_back(m_currentCommand);
-}
-
-void BankSystem::query(int id, int accountPassword) const {
-    Account* acc = findAccount(id);
-    if (!acc || !ownsAccount(id)) { printFailure(); return; }
-    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
-    printAccountDetail(id);
-}
-
-void BankSystem::queryAllAccounts() const {
-    User* user = findUser(currentUserName);
-    if (!user) { printFailure(); return; }
-    std::vector<int> ids = user->getAccountIDs();
-    if (ids.empty()) { printFailure(); return; }
-    std::sort(ids.begin(), ids.end());
-    for (int id : ids) {
-        printAccountInfo(id);
-    }
-}
-
-
-void BankSystem::deposit(int id, double amount, int accountPassword) {
-    Account* acc = findAccount(id);
-    if (!acc || !ownsAccount(id)) { printFailure(); return; }
-    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
-    if (acc->deposit(currentDate, amount)) {
-        printSuccess();
-        logRecords.push_back(m_currentCommand);
-    } else {
-        printFailure();
-    }
-}
-
-void BankSystem::withdraw(int id, double amount, int accountPassword) {
-    Account* acc = findAccount(id);
-    if (!acc || !ownsAccount(id)) { printFailure(); return; }
-    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
-    if (acc->withdraw(currentDate, amount)) {
-        printSuccess();
-        logRecords.push_back(m_currentCommand);
-    } else {
-        printFailure();
-    }
-}
-
-void BankSystem::transfer(int srcId, int dstId, double amount, int srcAccountPassword) {
-    if (srcId == dstId) { printFailure(); return; }
-    Account* srcAcc = findAccount(srcId);
-    Account* dstAcc = findAccount(dstId);
-    if (!srcAcc || !dstAcc) { printFailure(); return; }
-    if (!ownsAccount(srcId)) { printFailure(); return; }
-    if (!srcAcc->verifyAccountPassword(srcAccountPassword)) { printFailure(); return; }
-    if (!srcAcc->withdraw(currentDate, amount)) { printFailure(); return; }
-    dstAcc->deposit(currentDate, amount);
-    printSuccess();
-    logRecords.push_back(m_currentCommand);
-}
-
-void BankSystem::fixedDeposit(int id, double amount, int months, int accountPassword) {
-    Account* acc = findAccount(id);
-    if (!acc || !ownsAccount(id)) { printFailure(); return; }
-    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
-    if (acc->getType() != 'S') { printFailure(); return; }
-    SavingAccount* savingAcc = static_cast<SavingAccount*>(acc);
-    if (savingAcc->fixedDeposit(currentDate, amount, months)) {
-        printSuccess();
-        logRecords.push_back(m_currentCommand);
-    } else {
-        printFailure();
-    }
-}
-
-void BankSystem::fixedWithdraw(int id, double amount, int accountPassword) {
-    Account* acc = findAccount(id);
-    if (!acc || !ownsAccount(id)) { printFailure(); return; }
-    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
-    if (acc->getType() != 'S') { printFailure(); return; }
-    SavingAccount* savingAcc = static_cast<SavingAccount*>(acc);
-    if (savingAcc->fixedWithdraw(currentDate, amount)) {
-        printSuccess();
-        logRecords.push_back(m_currentCommand);
-    } else {
-        printFailure();
-    }
-}
-
-void BankSystem::consume(int id, double amount, int accountPassword) {
-    Account* acc = findAccount(id);
-    if (!acc || !ownsAccount(id)) { printFailure(); return; }
-    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
-    if (acc->getType() != 'C') { printFailure(); return; }
-    CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
-    if (creditAcc->consume(currentDate, amount)) {
-        printSuccess();
-        logRecords.push_back(m_currentCommand);
-    } else {
-        printFailure();
-    }
-}
-
-void BankSystem::cashAdvance(int id, double amount, int accountPassword) {
-    Account* acc = findAccount(id);
-    if (!acc || !ownsAccount(id)) { printFailure(); return; }
-    if (!acc->verifyAccountPassword(accountPassword)) { printFailure(); return; }
-    if (acc->getType() != 'C') { printFailure(); return; }
-    CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
-    if (creditAcc->cashAdvance(currentDate, amount)) {
-        printSuccess();
-        logRecords.push_back(m_currentCommand);
-    } else {
-        printFailure();
-    }
-}
-
-
-void BankSystem::showDate() const {
-    if (!isAdmin()) { printFailure(); return; }
-    currentDate.showDate();
-}
-
-void BankSystem::addDays(int days) {
-    if (!isAdmin()) { printFailure(); return; }
-    if (currentDate.addDays(days)) {
-        updateAllAccountsInterest(currentDate);
-        printSuccess();
-        logRecords.push_back(m_currentCommand);
-    } else {
-        printFailure();
-    }
-}
-
-void BankSystem::setDate(int year, int month, int day) {
-    if (!isAdmin()) { printFailure(); return; }
-    if (currentDate.setDate(year, month, day)) {
-        updateAllAccountsInterest(currentDate);
-        printSuccess();
-        logRecords.push_back(m_currentCommand);
-    } else {
-        printFailure();
-    }
-}
-
-
-
-void BankSystem::createUser(const std::string &username, const std::string &password) {
-    if (!isAdmin()) { printFailure(); return; }
-    if (!isLegalName(username)) { printFailure(); return; }
-    if (username == "admin") { printFailure(); return; }
-    if (password.empty()) { printFailure(); return; }
-    if (findUser(username)) { printFailure(); return; }
-    users.emplace_back(username, UserType::normal, password);
-    printSuccess();
-    logRecords.push_back(m_currentCommand);
-}
-
-void BankSystem::deleteUser(const std::string &username) {
-    if (!isAdmin()) { printFailure(); return; }
-    if (username == "admin") { printFailure(); return; }
-    if (username == currentUserName) { printFailure(); return; }
-    User* user = findUser(username);
-    if (!user) { printFailure(); return; }
-    if (user->getAccountCount() > 0) { printFailure(); return; }
-    for (auto i = 0; i < users.size(); i++) {
-        if (users[i].getUserName() == username) {
-            users.erase(users.begin() + i);
-            printSuccess();
-            logRecords.push_back(m_currentCommand);
-            return;
-        }
-    }
-}
-
-void BankSystem::queryUser(const std::string &username) const {
-    if (!isAdmin()) { printFailure(); return; }
-    User* user = findUser(username);
-    if (!user) { printFailure(); return; }
-    std::vector<int> ids = user->getAccountIDs();
-    if (ids.empty()) { printFailure(); return; }
-    std::sort(ids.begin(), ids.end());
-    for (int id : ids) {
-        printAccountInfo(id);
-    }
-}
-
-void BankSystem::queryAllUser() const {
-    if (!isAdmin()) { printFailure(); return; }
-    if (users.empty()) { printFailure(); return; }
-    std::vector<User> sortedUsers = users;
-    std::sort(sortedUsers.begin(), sortedUsers.end());
-    for (const auto &user : sortedUsers) {
-        std::cout << "USER " << user.getUserName() << " " << user.getAccountCount() << std::endl;
-    }
-}
-
-void BankSystem::switchUser(const std::string &username, const std::string &password) {
-    User* user = findUser(username);
-    if (!user) { printFailure(); return; }
-    if (!user->verifyPassword(password)) { printFailure(); return; }
-    currentUserName = username;
-    printSuccess();
-    logRecords.push_back(m_currentCommand);
-}
-
-void BankSystem::whoami() const {
-    if (currentUserName.empty()) { printFailure(); return; }
-    std::cout << currentUserName << std::endl;
-}
-
-
-void BankSystem::showLog() const {
-    if (!isAdmin()) { printFailure(); return; }
-    if (logRecords.empty()) {
-        printFailure();
-        return;
-    }
-    for (auto i = 0; i < logRecords.size(); i++) {
-        std::cout << (i + 1) << " " << logRecords[i] << std::endl;
-    }
-}
-
-void BankSystem::rollback(int n) {
-    if (!isAdmin()) { printFailure(); return; }
-    if (n < 0 || n > (int)logRecords.size()) {
-        printFailure();
-        return;
-    }
-
-    std::vector<std::string> cmdsToReplay(logRecords.begin(), logRecords.begin() + n);
-
-    clearAccounts();
-    users.clear();
-    users.emplace_back("admin", UserType::admin, "admin");
-    users.emplace_back("default", UserType::normal, "default");
-    currentDate = Date(1970, 1, 1);
-    currentUserName = "default";
-    logRecords.clear();
-
-    replayCommands(cmdsToReplay);
-
-    printSuccess();
-}
-
-void BankSystem::saveLog(const std::string &filename) const {
-    if (!isAdmin()) { printFailure(); return; }
-    std::ofstream file(filename);
-    if (!file) {
-        printFailure();
-        return;
-    }
-    for (auto i = 0; i < logRecords.size(); i++) {
-        file << (i + 1) << " " << logRecords[i] << std::endl;
-    }
-    printSuccess();
-}
-
-void BankSystem::resume(const std::string &filename) {
-    if (!isAdmin()) { printFailure(); return; }
-    if (!logRecords.empty()) {
-        printFailure();
-        return;
-    }
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        printFailure();
-        return;
-    }
-    std::vector<std::string> subCommands;
-    std::string line;
-    while (std::getline(file, line)) {
-        if (line.empty()) continue;
-        auto pos = line.find(' ');
-        if (pos == std::string::npos) {
-            printFailure();
-            return;
-        }
-        subCommands.push_back(line.substr(pos + 1));
-    }
-    file.close();
-
-    replayCommands(subCommands);
-
-    printSuccess();
+    logMgr.setSilent(false);
 }
