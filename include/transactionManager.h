@@ -1,5 +1,6 @@
 #pragma once
 
+class Account;
 class AccountManager;
 class UserManager;
 class DateManager;
@@ -9,6 +10,8 @@ private:
     AccountManager* accountMgr;
     UserManager* userMgr;
     DateManager* dateMgr;
+
+    Account* validateAndGet(int id, int accountPassword);
 
 public:
     TransactionManager(AccountManager* am, UserManager* um, DateManager* dm);

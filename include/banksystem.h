@@ -21,6 +21,8 @@ private:
     TransactionManager transactionMgr;
 
     void replayCommands(const std::vector<std::string>& commands);
+    void logResult(bool ok);
+    bool requireAdmin() const;
 
 public:
     BankSystem();

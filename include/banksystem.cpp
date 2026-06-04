@@ -12,6 +12,23 @@ BankSystem::BankSystem()
 BankSystem::~BankSystem() {
 }
 
+void BankSystem::logResult(bool ok) {
+    if (ok) {
+        logMgr.printSuccess();
+        logMgr.recordLog(logMgr.getCurrentCommand());
+    } else {
+        logMgr.printFailure();
+    }
+}
+
+bool BankSystem::requireAdmin() const {
+    if (!userMgr.isAdmin()) {
+        logMgr.printFailure();
+        return false;
+    }
+    return true;
+}
+
 void BankSystem::openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay, int accountPassword, bool shared) {
     if (id <= 0) { logMgr.printFailure(); return; }
     if (accountMgr.findAccount(id) != nullptr) { logMgr.printFailure(); return; }
@@ -34,8 +51,7 @@ void BankSystem::openAccount(int id, char type, const std::string &accountName, 
         return;
     }
     userMgr.addAccountToUser(userMgr.getCurrentUserName(), id);
-    logMgr.printSuccess();
-    logMgr.recordLog(logMgr.getCurrentCommand());
+    logResult(true);
 }
 
 void BankSystem::closeAccount(int id, int accountPassword) {
@@ -51,12 +67,11 @@ void BankSystem::closeAccount(int id, int accountPassword) {
         userMgr.removeAccountFromUser(ownerName, id);
     }
     accountMgr.removeAccount(id);
-    logMgr.printSuccess();
-    logMgr.recordLog(logMgr.getCurrentCommand());
+    logResult(true);
 }
 
 void BankSystem::addOwner(int id, const std::string &userName) {
-    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    if (!requireAdmin()) return;
     Account* acc = accountMgr.findAccount(id);
     if (!acc) { logMgr.printFailure(); return; }
     if (!acc->isShared()) { logMgr.printFailure(); return; }
@@ -66,12 +81,11 @@ void BankSystem::addOwner(int id, const std::string &userName) {
     acc->addOwner(userName);
     if (acc->getOwners().size() == before) { logMgr.printFailure(); return; }
     targetUser->addAccountID(id);
-    logMgr.printSuccess();
-    logMgr.recordLog(logMgr.getCurrentCommand());
+    logResult(true);
 }
 
 void BankSystem::removeOwner(int id, const std::string &userName) {
-    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    if (!requireAdmin()) return;
     Account* acc = accountMgr.findAccount(id);
     if (!acc) { logMgr.printFailure(); return; }
     if (!acc->isShared()) { logMgr.printFailure(); return; }
@@ -80,8 +94,7 @@ void BankSystem::removeOwner(int id, const std::string &userName) {
     if (acc->getOwners().size() == before) { logMgr.printFailure(); return; }
     User* targetUser = userMgr.findUser(userName);
     if (targetUser) targetUser->removeAccountID(id);
-    logMgr.printSuccess();
-    logMgr.recordLog(logMgr.getCurrentCommand());
+    logResult(true);
 }
 
 void BankSystem::modifyName(int id, const std::string &username, int accountPassword) {
@@ -90,12 +103,11 @@ void BankSystem::modifyName(int id, const std::string &username, int accountPass
     if (!acc->verifyAccountPassword(accountPassword)) { logMgr.printFailure(); return; }
     if (username.empty()) { logMgr.printFailure(); return; }
     acc->modifyName(username);
-    logMgr.printSuccess();
-    logMgr.recordLog(logMgr.getCurrentCommand());
+    logResult(true);
 }
 
 void BankSystem::modifyCredit(int id, double newCredit, int accountPassword) {
-    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    if (!requireAdmin()) return;
     Account* acc = accountMgr.findAccount(id);
     if (!acc || !userMgr.ownsAccount(id)) { logMgr.printFailure(); return; }
     if (!acc->verifyAccountPassword(accountPassword)) { logMgr.printFailure(); return; }
@@ -103,33 +115,29 @@ void BankSystem::modifyCredit(int id, double newCredit, int accountPassword) {
     if (newCredit < 0) { logMgr.printFailure(); return; }
     CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
     creditAcc->modifyCredit(newCredit);
-    logMgr.printSuccess();
-    logMgr.recordLog(logMgr.getCurrentCommand());
+    logResult(true);
 }
 
 void BankSystem::modifyShared(int id, bool shared) {
-    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    if (!requireAdmin()) return;
     Account* acc = accountMgr.findAccount(id);
     if (!acc) { logMgr.printFailure(); return; }
     acc->setShared(shared);
-    logMgr.printSuccess();
-    logMgr.recordLog(logMgr.getCurrentCommand());
+    logResult(true);
 }
 
 void BankSystem::changeUserPassword(const std::string &oldPassword, const std::string &newPassword) {
     User* user = userMgr.findUser(userMgr.getCurrentUserName());
     if (!user) { logMgr.printFailure(); return; }
     if (!user->changePassword(oldPassword, newPassword)) { logMgr.printFailure(); return; }
-    logMgr.printSuccess();
-    logMgr.recordLog(logMgr.getCurrentCommand());
+    logResult(true);
 }
 
 void BankSystem::changeAccountPassword(int id, int oldPassword, int newPassword) {
     Account* acc = accountMgr.findAccount(id);
     if (!acc || !userMgr.ownsAccount(id)) { logMgr.printFailure(); return; }
     if (!acc->changeAccountPassword(oldPassword, newPassword)) { logMgr.printFailure(); return; }
-    logMgr.printSuccess();
-    logMgr.recordLog(logMgr.getCurrentCommand());
+    logResult(true);
 }
 
 void BankSystem::query(int id, int accountPassword) const {
@@ -151,113 +159,58 @@ void BankSystem::queryAllAccounts() const {
 }
 
 void BankSystem::deposit(int id, double amount, int accountPassword) {
-    if (transactionMgr.deposit(id, amount, accountPassword)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    logResult(transactionMgr.deposit(id, amount, accountPassword));
 }
 
 void BankSystem::withdraw(int id, double amount, int accountPassword) {
-    if (transactionMgr.withdraw(id, amount, accountPassword)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    logResult(transactionMgr.withdraw(id, amount, accountPassword));
 }
 
 void BankSystem::transfer(int srcId, int dstId, double amount, int srcAccountPassword) {
-    if (transactionMgr.transfer(srcId, dstId, amount, srcAccountPassword)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    logResult(transactionMgr.transfer(srcId, dstId, amount, srcAccountPassword));
 }
 
 void BankSystem::fixedDeposit(int id, double amount, int months, int accountPassword) {
-    if (transactionMgr.fixedDeposit(id, amount, months, accountPassword)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    logResult(transactionMgr.fixedDeposit(id, amount, months, accountPassword));
 }
 
 void BankSystem::fixedWithdraw(int id, double amount, int accountPassword) {
-    if (transactionMgr.fixedWithdraw(id, amount, accountPassword)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    logResult(transactionMgr.fixedWithdraw(id, amount, accountPassword));
 }
 
 void BankSystem::consume(int id, double amount, int accountPassword) {
-    if (transactionMgr.consume(id, amount, accountPassword)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    logResult(transactionMgr.consume(id, amount, accountPassword));
 }
 
 void BankSystem::cashAdvance(int id, double amount, int accountPassword) {
-    if (transactionMgr.cashAdvance(id, amount, accountPassword)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    logResult(transactionMgr.cashAdvance(id, amount, accountPassword));
 }
 
 void BankSystem::showDate() const {
-    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    if (!requireAdmin()) return;
     dateMgr.showDate();
 }
 
 void BankSystem::addDays(int days) {
-    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
-    if (dateMgr.addDays(days)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    if (!requireAdmin()) return;
+    logResult(dateMgr.addDays(days));
 }
 
 void BankSystem::setDate(int year, int month, int day) {
-    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
-    if (dateMgr.setDate(year, month, day)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    if (!requireAdmin()) return;
+    logResult(dateMgr.setDate(year, month, day));
 }
 
 void BankSystem::createUser(const std::string &username, const std::string &password) {
-    if (userMgr.createUser(username, password)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    logResult(userMgr.createUser(username, password));
 }
 
 void BankSystem::deleteUser(const std::string &username) {
-    if (userMgr.deleteUser(username)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    logResult(userMgr.deleteUser(username));
 }
 
 void BankSystem::queryUser(const std::string &username) const {
-    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    if (!requireAdmin()) return;
     User* user = userMgr.findUser(username);
     if (!user) { logMgr.printFailure(); return; }
     std::vector<int> ids = user->getAccountIDs();
@@ -275,12 +228,7 @@ void BankSystem::queryAllUser() const {
 }
 
 void BankSystem::switchUser(const std::string &username, const std::string &password) {
-    if (userMgr.switchUser(username, password)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    logResult(userMgr.switchUser(username, password));
 }
 
 void BankSystem::whoami() const {
@@ -288,12 +236,12 @@ void BankSystem::whoami() const {
 }
 
 void BankSystem::showLog() const {
-    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    if (!requireAdmin()) return;
     logMgr.showLog();
 }
 
 void BankSystem::rollback(int n) {
-    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    if (!requireAdmin()) return;
     if (n < 0 || n > (int)logMgr.getLogRecords().size()) {
         logMgr.printFailure();
         return;
@@ -313,12 +261,12 @@ void BankSystem::rollback(int n) {
 }
 
 void BankSystem::saveLog(const std::string &filename) const {
-    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    if (!requireAdmin()) return;
     logMgr.saveLog(filename);
 }
 
 void BankSystem::resume(const std::string &filename) {
-    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    if (!requireAdmin()) return;
     if (!logMgr.isInitialState()) {
         logMgr.printFailure();
         return;
