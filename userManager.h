@@ -4,30 +4,22 @@
 #include <string>
 
 class UserManager {
-private:
-    std::vector<User> users;
-    std::string currentUserName;
-
 public:
-    UserManager();
+    UserManager() = delete;
 
-    User* findUser(const std::string &name) const;
-    bool isAdmin() const;
-    bool isLoggedIn() const;
-    static bool isLegalName(const std::string &name);
-    bool ownsAccount(int id) const;
+    static User* findUser(const std::vector<User>& users, const std::string& name);
+    static bool isAdmin(const std::vector<User>& users, const std::string& currentUserName);
+    static bool isLoggedIn(const std::string& currentUserName);
+    static bool isLegalName(const std::string& name);
+    static bool ownsAccount(const std::vector<User>& users, const std::string& currentUserName, int id);
 
-    bool createUser(const std::string &username);
-    bool deleteUser(const std::string &username);
-    bool switchUser(const std::string &username);
+    static bool createUser(std::vector<User>& users, const std::string& currentUserName, const std::string& username);
+    static bool deleteUser(std::vector<User>& users, const std::string& currentUserName, const std::string& username);
+    static bool switchUser(const std::vector<User>& users, std::string& currentUserName, const std::string& username);
 
-    bool queryAllUser() const;
-    void whoami() const;
-
-    void addAccountToUser(const std::string &username, int accountId);
-    void removeAccountFromUser(const std::string &username, int accountId);
-
-    void reset();
-    const std::string& getCurrentUserName() const { return currentUserName; }
-    const std::vector<User>& getUsers() const { return users; }
+    static bool queryAllUser(const std::vector<User>& users, const std::string& currentUserName);
+    static void whoami(const std::string& currentUserName);
+    static void addAccountToUser(std::vector<User>& users, const std::string& username, int accountId);
+    static void removeAccountFromUser(std::vector<User>& users, const std::string& username, int accountId);
+    static void reset(std::vector<User>& users, std::string& currentUserName);
 };

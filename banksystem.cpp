@@ -1,219 +1,224 @@
 #include "banksystem.h"
+#include "accountManager.h"
+#include "userManager.h"
+#include "logManager.h"
 #include "command.h"
 #include <fstream>
 #include <sstream>
 #include <algorithm>
 
 BankSystem::BankSystem()
-    : accountMgr(), userMgr(), dateMgr(&accountMgr), logMgr(),
-      transactionMgr(&accountMgr, &userMgr, &dateMgr) {}
+    : currentDate(1970, 1, 1), m_silent(false) {
+    UserManager::reset(users, currentUserName);
+}
 
 BankSystem::~BankSystem() {
+    AccountManager::clearAccounts(accounts);
+}
+
+bool BankSystem::requireAdmin() const {
+    if (!isAdmin()) {
+        LogManager::printFailure(m_silent);
+        return false;
+    }
+    return true;
+}
+
+bool BankSystem::requireAccount(int id) const {
+    if (!AccountManager::findAccount(accounts, id)) {
+        LogManager::printFailure(m_silent);
+        return false;
+    }
+    if (!UserManager::ownsAccount(users, currentUserName, id)) {
+        LogManager::printFailure(m_silent);
+        return false;
+    }
+    return true;
+}
+
+void BankSystem::logResult(bool ok) {
+    if (ok) {
+        LogManager::printSuccess(m_silent);
+        LogManager::recordLog(logRecords, m_currentCommand);
+    } else {
+        LogManager::printFailure(m_silent);
+    }
 }
 
 void BankSystem::openAccount(int id, char type, const std::string &accountName, double balance) {
-    if (id <= 0) { logMgr.printFailure(); return; }
-    if (accountMgr.findAccount(id) != nullptr) { logMgr.printFailure(); return; }
-    if (type != 'S' && type != 'C') { logMgr.printFailure(); return; }
-    if (accountName.empty()) { logMgr.printFailure(); return; }
-    if (balance < 0) { logMgr.printFailure(); return; }
+    if (id <= 0) { LogManager::printFailure(m_silent); return; }
+    if (AccountManager::findAccount(accounts, id) != nullptr) { LogManager::printFailure(m_silent); return; }
+    if (type != 'S' && type != 'C') { LogManager::printFailure(m_silent); return; }
+    if (accountName.empty()) { LogManager::printFailure(m_silent); return; }
+    if (balance < 0) { LogManager::printFailure(m_silent); return; }
 
     Account* newAccount = nullptr;
     if (type == 'S') {
-        newAccount = new SavingAccount(id, type, accountName, balance, dateMgr.getCurrentDate());
+        newAccount = new SavingAccount(id, type, accountName, balance, currentDate);
     } else {
-        newAccount = new CreditAccount(id, type, accountName, balance, dateMgr.getCurrentDate());
+        newAccount = new CreditAccount(id, type, accountName, balance, currentDate);
     }
-    if (!accountMgr.addAccount(newAccount)) {
+    if (!AccountManager::addAccount(accounts, newAccount)) {
         delete newAccount;
-        logMgr.printFailure();
+        LogManager::printFailure(m_silent);
         return;
     }
-    userMgr.addAccountToUser(userMgr.getCurrentUserName(), id);
-    logMgr.printSuccess();
-    logMgr.recordLog(logMgr.getCurrentCommand());
+    UserManager::addAccountToUser(users, currentUserName, id);
+    logResult(true);
 }
 
 void BankSystem::closeAccount(int id) {
-    Account* acc = accountMgr.findAccount(id);
-    if (!acc || !userMgr.ownsAccount(id)) { logMgr.printFailure(); return; }
-    if (acc->getBalance() != 0) { logMgr.printFailure(); return; }
-    userMgr.removeAccountFromUser(userMgr.getCurrentUserName(), id);
-    accountMgr.removeAccount(id);
-    logMgr.printSuccess();
-    logMgr.recordLog(logMgr.getCurrentCommand());
+    if (!requireAccount(id)) return;
+    Account* acc = AccountManager::findAccount(accounts, id);
+    if (acc->getBalance() != 0) { LogManager::printFailure(m_silent); return; }
+    UserManager::removeAccountFromUser(users, currentUserName, id);
+    AccountManager::removeAccount(accounts, id);
+    logResult(true);
 }
 
 void BankSystem::modifyName(int id, const std::string &username) {
-    Account* acc = accountMgr.findAccount(id);
-    if (!acc || !userMgr.ownsAccount(id)) { logMgr.printFailure(); return; }
-    if (username.empty()) { logMgr.printFailure(); return; }
+    if (!requireAccount(id)) return;
+    if (username.empty()) { LogManager::printFailure(m_silent); return; }
+    Account* acc = AccountManager::findAccount(accounts, id);
     acc->modifyName(username);
-    logMgr.printSuccess();
-    logMgr.recordLog(logMgr.getCurrentCommand());
+    logResult(true);
 }
 
 void BankSystem::modifyCredit(int id, double newCredit) {
-    Account* acc = accountMgr.findAccount(id);
-    if (!acc || !userMgr.ownsAccount(id)) { logMgr.printFailure(); return; }
-    if (acc->getType() != 'C') { logMgr.printFailure(); return; }
-    if (newCredit < 0) { logMgr.printFailure(); return; }
+    if (!requireAccount(id)) return;
+    Account* acc = AccountManager::findAccount(accounts, id);
+    if (acc->getType() != 'C') { LogManager::printFailure(m_silent); return; }
+    if (newCredit < 0) { LogManager::printFailure(m_silent); return; }
     CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
     creditAcc->modifyCredit(newCredit);
-    logMgr.printSuccess();
-    logMgr.recordLog(logMgr.getCurrentCommand());
+    logResult(true);
 }
 
 void BankSystem::query(int id) const {
-    Account* acc = accountMgr.findAccount(id);
-    if (!acc || !userMgr.ownsAccount(id)) { logMgr.printFailure(); return; }
-    accountMgr.printAccountInfo(id);
+    if (!AccountManager::findAccount(accounts, id) ||
+        !UserManager::ownsAccount(users, currentUserName, id)) {
+        LogManager::printFailure(m_silent);
+        return;
+    }
+    AccountManager::printAccountInfo(accounts, id);
 }
 
 void BankSystem::queryAllAccounts() const {
-    User* user = userMgr.findUser(userMgr.getCurrentUserName());
-    if (!user) { logMgr.printFailure(); return; }
+    User* user = UserManager::findUser(users, currentUserName);
+    if (!user) { LogManager::printFailure(m_silent); return; }
     std::vector<int> ids = user->getAccountIDs();
-    if (ids.empty()) { logMgr.printFailure(); return; }
+    if (ids.empty()) { LogManager::printFailure(m_silent); return; }
     std::sort(ids.begin(), ids.end());
     for (int id : ids) {
-        accountMgr.printAccountInfo(id);
+        AccountManager::printAccountInfo(accounts, id);
     }
 }
 
 void BankSystem::deposit(int id, double amount) {
-    if (transactionMgr.deposit(id, amount)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    if (!requireAccount(id)) return;
+    logResult(AccountManager::deposit(accounts, currentDate, id, amount));
 }
 
 void BankSystem::withdraw(int id, double amount) {
-    if (transactionMgr.withdraw(id, amount)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    if (!requireAccount(id)) return;
+    logResult(AccountManager::withdraw(accounts, currentDate, id, amount));
 }
 
 void BankSystem::transfer(int srcId, int dstId, double amount) {
-    if (transactionMgr.transfer(srcId, dstId, amount)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
+    if (!UserManager::ownsAccount(users, currentUserName, srcId)) {
+        LogManager::printFailure(m_silent);
+        return;
     }
+    logResult(AccountManager::transfer(accounts, currentDate, srcId, dstId, amount));
 }
 
 void BankSystem::showDate() const {
-    dateMgr.showDate();
+    Date::showDate(currentDate);
 }
 
 void BankSystem::addDays(int days) {
-    if (dateMgr.addDays(days)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    if (!requireAdmin()) return;
+    bool ok = Date::addDays(currentDate, days);
+    if (ok) AccountManager::updateAllAccountsInterest(accounts, currentDate);
+    logResult(ok);
 }
 
 void BankSystem::setDate(int year, int month, int day) {
-    if (dateMgr.setDate(year, month, day)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    if (!requireAdmin()) return;
+    bool ok = Date::setDate(currentDate, year, month, day);
+    if (ok) AccountManager::updateAllAccountsInterest(accounts, currentDate);
+    logResult(ok);
 }
 
 void BankSystem::createUser(const std::string &username) {
-    if (userMgr.createUser(username)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    logResult(UserManager::createUser(users, currentUserName, username));
 }
 
 void BankSystem::deleteUser(const std::string &username) {
-    if (userMgr.deleteUser(username)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    logResult(UserManager::deleteUser(users, currentUserName, username));
 }
 
 void BankSystem::queryUser(const std::string &username) const {
-    if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
-    User* user = userMgr.findUser(username);
-    if (!user) { logMgr.printFailure(); return; }
+    if (!requireAdmin()) return;
+    User* user = UserManager::findUser(users, username);
+    if (!user) { LogManager::printFailure(m_silent); return; }
     std::vector<int> ids = user->getAccountIDs();
-    if (ids.empty()) { logMgr.printFailure(); return; }
+    if (ids.empty()) { LogManager::printFailure(m_silent); return; }
     std::sort(ids.begin(), ids.end());
     for (int id : ids) {
-        accountMgr.printAccountInfo(id);
+        AccountManager::printAccountInfo(accounts, id);
     }
 }
 
 void BankSystem::queryAllUser() const {
-    if (!userMgr.queryAllUser()) {
-        logMgr.printFailure();
+    if (!UserManager::queryAllUser(users, currentUserName)) {
+        LogManager::printFailure(m_silent);
     }
 }
 
 void BankSystem::switchUser(const std::string &username) {
-    if (userMgr.switchUser(username)) {
-        logMgr.printSuccess();
-        logMgr.recordLog(logMgr.getCurrentCommand());
-    } else {
-        logMgr.printFailure();
-    }
+    logResult(UserManager::switchUser(users, currentUserName, username));
 }
 
 void BankSystem::whoami() const {
-    userMgr.whoami();
+    UserManager::whoami(currentUserName);
 }
 
 void BankSystem::showLog() const {
-    logMgr.showLog();
+    LogManager::showLog(logRecords, m_silent);
 }
 
 void BankSystem::rollback(int n) {
-    if (n < 0 || n > static_cast<int>(logMgr.getLogRecords().size())) {
-        logMgr.printFailure();
+    if (n < 0 || n > static_cast<int>(logRecords.size())) {
+        LogManager::printFailure(m_silent);
         return;
     }
 
-    std::vector<std::string> cmdsToReplay(logMgr.getLogRecords().begin(),
-                                           logMgr.getLogRecords().begin() + n);
+    std::vector<std::string> cmdsToReplay(logRecords.begin(),
+                                           logRecords.begin() + n);
 
-    accountMgr.clearAccounts();
-    userMgr.reset();
-    dateMgr.reset();
-    logMgr.clear();
+    AccountManager::clearAccounts(accounts);
+    UserManager::reset(users, currentUserName);
+    currentDate = Date(1970, 1, 1);
+    LogManager::clear(logRecords);
 
     replayCommands(cmdsToReplay);
 
-    logMgr.printSuccess();
+    LogManager::printSuccess(m_silent);
 }
 
 void BankSystem::saveLog(const std::string &filename) const {
-    logMgr.saveLog(filename);
+    LogManager::saveLog(logRecords, filename, m_silent);
 }
 
 void BankSystem::resume(const std::string &filename) {
-    if (!logMgr.isInitialState()) {
-        logMgr.printFailure();
+    if (!LogManager::isInitialState(logRecords)) {
+        LogManager::printFailure(m_silent);
         return;
     }
     std::ifstream file(filename);
     if (!file.is_open()) {
-        logMgr.printFailure();
+        LogManager::printFailure(m_silent);
         return;
     }
     std::vector<std::string> subCommands;
@@ -222,7 +227,7 @@ void BankSystem::resume(const std::string &filename) {
         if (line.empty()) continue;
         size_t pos = line.find(' ');
         if (pos == std::string::npos) {
-            logMgr.printFailure();
+            LogManager::printFailure(m_silent);
             return;
         }
         subCommands.push_back(line.substr(pos + 1));
@@ -231,11 +236,11 @@ void BankSystem::resume(const std::string &filename) {
 
     replayCommands(subCommands);
 
-    logMgr.printSuccess();
+    LogManager::printSuccess(m_silent);
 }
 
 void BankSystem::replayCommands(const std::vector<std::string>& commands) {
-    logMgr.setSilent(true);
+    m_silent = true;
     for (const auto &cmd : commands) {
         std::istringstream iss(cmd);
         std::string action;
@@ -247,5 +252,5 @@ void BankSystem::replayCommands(const std::vector<std::string>& commands) {
         }
         Command::execute(*this, cmd);
     }
-    logMgr.setSilent(false);
+    m_silent = false;
 }

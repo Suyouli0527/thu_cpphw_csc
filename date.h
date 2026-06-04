@@ -26,6 +26,10 @@ public:
         return totalDays - other.totalDays;
     }
 
+    static void showDate(const Date &currentDate);
+    static bool addDays(Date &currentDate, int days);
+    static bool setDate(Date &currentDate, int y, int m, int d);
+
 private:
     int year;
     int month;

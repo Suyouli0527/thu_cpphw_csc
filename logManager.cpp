@@ -1,14 +1,15 @@
 #include "logManager.h"
+#include "tools.h"
 #include <iostream>
 #include <fstream>
 
-void LogManager::recordLog(const std::string &cmd) {
+void LogManager::recordLog(std::vector<std::string>& logRecords, const std::string& cmd) {
     logRecords.push_back(cmd);
 }
 
-void LogManager::showLog() const {
+void LogManager::showLog(const std::vector<std::string>& logRecords, bool silent) {
     if (logRecords.empty()) {
-        printFailure();
+        printFailure(silent);
         return;
     }
     for (size_t i = 0; i < logRecords.size(); i++) {
@@ -16,26 +17,30 @@ void LogManager::showLog() const {
     }
 }
 
-void LogManager::printSuccess() const {
-    if (!m_silent) Tools::printSuccess();
+void LogManager::printSuccess(bool silent) {
+    if (!silent) Tools::printSuccess();
 }
 
-void LogManager::printFailure() const {
-    if (!m_silent) Tools::printFailure();
+void LogManager::printFailure(bool silent) {
+    if (!silent) Tools::printFailure();
 }
 
-void LogManager::saveLog(const std::string &filename) const {
+bool LogManager::isInitialState(const std::vector<std::string>& logRecords) {
+    return logRecords.empty();
+}
+
+void LogManager::saveLog(const std::vector<std::string>& logRecords, const std::string& filename, bool silent) {
     std::ofstream file(filename);
     if (!file) {
-        printFailure();
+        printFailure(silent);
         return;
     }
     for (size_t i = 0; i < logRecords.size(); i++) {
         file << (i + 1) << " " << logRecords[i] << std::endl;
     }
-    printSuccess();
+    printSuccess(silent);
 }
 
-void LogManager::clear() {
+void LogManager::clear(std::vector<std::string>& logRecords) {
     logRecords.clear();
 }

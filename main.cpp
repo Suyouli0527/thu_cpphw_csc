@@ -1,4 +1,5 @@
 #include "command.h"
+#include "tools.h"
 #include <iostream>
 #include <string>
 
