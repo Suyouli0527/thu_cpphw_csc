@@ -3,8 +3,66 @@
 #include <iomanip>
 #include <sstream>
 
+const double AccountManager::savingRate = 0.0115;
+const double AccountManager::creditRate = 0.0225;
+const double AccountManager::debtRate = 0.0005;
+const int AccountManager::fixedMonths[] = {3, 6, 12, 24, 36, 60};
+const double AccountManager::fixedRates[] = {0.0135, 0.0155, 0.0175, 0.0225, 0.0275, 0.0300};
+const int AccountManager::fixedDays[] = {90, 180, 365, 730, 1095, 1825};
+
+double AccountManager::calcDailyInterest(char type, double balance, const Date &date) {
+    double dailyRate;
+    switch (type) {
+        case 'S':
+            dailyRate = savingRate / date.daysInYear();
+            break;
+        case 'C':
+            if (balance >= 0) {
+                dailyRate = creditRate / date.daysInYear();
+            } else {
+                dailyRate = debtRate;
+            }
+            break;
+        default:
+            return 0;
+    }
+    return balance * dailyRate;
+}
+
+double AccountManager::getFixedRate(int months) {
+    for (int i = 0; i < 6; i++) {
+        if (fixedMonths[i] == months) return fixedRates[i];
+    }
+    return 0;
+}
+
+double AccountManager::calcFixedInterest(double principal, int months) {
+    double rate = getFixedRate(months);
+    return principal * rate * months / 12.0;
+}
+
+double AccountManager::calcEarlyWithdrawInterest(double principal, const Date &depositDate, const Date &withdrawDate) {
+    int days = withdrawDate - depositDate;
+    if (days <= 0) return 0;
+    return principal * savingRate * days / 365.0;
+}
+
+AccountManager::AccountManager() : currentDate(1970, 1, 1) {}
+
 AccountManager::~AccountManager() {
     clearAccounts();
+}
+
+void AccountManager::updateAllAccountsInterest(const Date &newDate) {
+    for (auto acc : accounts) {
+        if (acc->getType() == 'S') {
+            acc->updateInterest(newDate);
+            SavingAccount* sa = static_cast<SavingAccount*>(acc);
+            sa->updateFixedDeposits(newDate);
+        } else if (acc->getType() == 'C') {
+            static_cast<CreditAccount*>(acc)->updateCreditInterest(newDate);
+        }
+    }
 }
 
 Account* AccountManager::findAccount(int id) const {
@@ -129,4 +187,79 @@ void AccountManager::printAccountDetail(int id) const {
                       << std::endl;
         }
     }
+}
+
+void AccountManager::showDate() const {
+    currentDate.showDate();
+}
+
+bool AccountManager::addDays(int days) {
+    if (!currentDate.addDays(days)) return false;
+    updateAllAccountsInterest(currentDate);
+    return true;
+}
+
+bool AccountManager::setDate(int year, int month, int day) {
+    if (!currentDate.setDate(year, month, day)) return false;
+    updateAllAccountsInterest(currentDate);
+    return true;
+}
+
+void AccountManager::reset() {
+    currentDate = Date(1970, 1, 1);
+}
+
+bool AccountManager::deposit(int id, double amount, int accountPassword) {
+    Account* acc = findAccount(id);
+    if (!acc || !acc->verifyAccountPassword(accountPassword)) return false;
+    return acc->deposit(currentDate, amount);
+}
+
+bool AccountManager::withdraw(int id, double amount, int accountPassword) {
+    Account* acc = findAccount(id);
+    if (!acc || !acc->verifyAccountPassword(accountPassword)) return false;
+    return acc->withdraw(currentDate, amount);
+}
+
+bool AccountManager::transfer(int srcId, int dstId, double amount, int srcAccountPassword) {
+    if (srcId == dstId) return false;
+    Account* srcAcc = findAccount(srcId);
+    Account* dstAcc = findAccount(dstId);
+    if (!srcAcc || !dstAcc) return false;
+    if (!srcAcc->verifyAccountPassword(srcAccountPassword)) return false;
+    if (!srcAcc->withdraw(currentDate, amount)) return false;
+    dstAcc->deposit(currentDate, amount);
+    return true;
+}
+
+bool AccountManager::fixedDeposit(int id, double amount, int months, int accountPassword) {
+    Account* acc = findAccount(id);
+    if (!acc || acc->getType() != 'S') return false;
+    if (!acc->verifyAccountPassword(accountPassword)) return false;
+    SavingAccount* savingAcc = static_cast<SavingAccount*>(acc);
+    return savingAcc->fixedDeposit(currentDate, amount, months);
+}
+
+bool AccountManager::fixedWithdraw(int id, double amount, int accountPassword) {
+    Account* acc = findAccount(id);
+    if (!acc || acc->getType() != 'S') return false;
+    if (!acc->verifyAccountPassword(accountPassword)) return false;
+    SavingAccount* savingAcc = static_cast<SavingAccount*>(acc);
+    return savingAcc->fixedWithdraw(currentDate, amount);
+}
+
+bool AccountManager::consume(int id, double amount, int accountPassword) {
+    Account* acc = findAccount(id);
+    if (!acc || acc->getType() != 'C') return false;
+    if (!acc->verifyAccountPassword(accountPassword)) return false;
+    CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
+    return creditAcc->consume(currentDate, amount);
+}
+
+bool AccountManager::cashAdvance(int id, double amount, int accountPassword) {
+    Account* acc = findAccount(id);
+    if (!acc || acc->getType() != 'C') return false;
+    if (!acc->verifyAccountPassword(accountPassword)) return false;
+    CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
+    return creditAcc->cashAdvance(currentDate, amount);
 }

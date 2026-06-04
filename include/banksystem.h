@@ -4,8 +4,6 @@
 #include "account.h"
 #include "accountManager.h"
 #include "userManager.h"
-#include "dateManager.h"
-#include "transactionManager.h"
 #include "logManager.h"
 #include <vector>
 #include <string>
@@ -16,11 +14,11 @@ class BankSystem {
 private:
     AccountManager accountMgr;
     UserManager userMgr;
-    DateManager dateMgr;
     LogManager logMgr;
-    TransactionManager transactionMgr;
 
     void replayCommands(const std::vector<std::string>& commands);
+    bool requireAccount(int id) const;
+    bool requireAccount(int id, int accountPassword) const;
 
 public:
     BankSystem();
@@ -74,7 +72,5 @@ public:
     std::string getCurrentUserName() const { return userMgr.getCurrentUserName(); }
     bool lastResult() const { return logMgr.lastResult(); }
     void resetResult() { logMgr.resetResult(); }
-    static std::string formatAmount(double amount) {
-        return AccountManager::formatAmount(amount);
-    }
+    static std::string formatAmount(double amount);
 };

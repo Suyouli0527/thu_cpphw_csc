@@ -6,10 +6,38 @@
 #include <algorithm>
 
 BankSystem::BankSystem()
-    : accountMgr(), userMgr(&accountMgr), dateMgr(&accountMgr), logMgr(),
-      transactionMgr(&accountMgr, &userMgr, &dateMgr) {}
+    : accountMgr(), userMgr(&accountMgr), logMgr() {}
 
 BankSystem::~BankSystem() {
+}
+
+std::string BankSystem::formatAmount(double amount) {
+    return AccountManager::formatAmount(amount);
+}
+
+bool BankSystem::requireAccount(int id) const {
+    if (!accountMgr.findAccount(id)) {
+        logMgr.printFailure();
+        return false;
+    }
+    if (!userMgr.ownsAccount(id)) {
+        logMgr.printFailure();
+        return false;
+    }
+    return true;
+}
+
+bool BankSystem::requireAccount(int id, int accountPassword) const {
+    Account* acc = accountMgr.findAccount(id);
+    if (!acc || !userMgr.ownsAccount(id)) {
+        logMgr.printFailure();
+        return false;
+    }
+    if (!acc->verifyAccountPassword(accountPassword)) {
+        logMgr.printFailure();
+        return false;
+    }
+    return true;
 }
 
 void BankSystem::openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay, int accountPassword, bool shared) {
@@ -23,9 +51,9 @@ void BankSystem::openAccount(int id, char type, const std::string &accountName, 
 
     Account* newAccount = nullptr;
     if (type == 'S') {
-        newAccount = new SavingAccount(id, type, accountName, balance, dateMgr.getCurrentDate(), accountPassword, shared);
+        newAccount = new SavingAccount(id, type, accountName, balance, accountMgr.getCurrentDate(), accountPassword, shared);
     } else {
-        newAccount = new CreditAccount(id, type, accountName, balance, repaymentDay, dateMgr.getCurrentDate(), accountPassword, shared);
+        newAccount = new CreditAccount(id, type, accountName, balance, repaymentDay, accountMgr.getCurrentDate(), accountPassword, shared);
     }
     newAccount->addOwner(userMgr.getCurrentUserName());
     if (!accountMgr.addAccount(newAccount)) {
@@ -39,9 +67,8 @@ void BankSystem::openAccount(int id, char type, const std::string &accountName, 
 }
 
 void BankSystem::closeAccount(int id, int accountPassword) {
+    if (!requireAccount(id, accountPassword)) return;
     Account* acc = accountMgr.findAccount(id);
-    if (!acc || !userMgr.ownsAccount(id)) { logMgr.printFailure(); return; }
-    if (!acc->verifyAccountPassword(accountPassword)) { logMgr.printFailure(); return; }
     if (acc->getBalance() != 0) { logMgr.printFailure(); return; }
     if (acc->getType() == 'S') {
         SavingAccount* sa = static_cast<SavingAccount*>(acc);
@@ -85,24 +112,20 @@ void BankSystem::removeOwner(int id, const std::string &userName) {
 }
 
 void BankSystem::modifyName(int id, const std::string &username, int accountPassword) {
-    Account* acc = accountMgr.findAccount(id);
-    if (!acc || !userMgr.ownsAccount(id)) { logMgr.printFailure(); return; }
-    if (!acc->verifyAccountPassword(accountPassword)) { logMgr.printFailure(); return; }
+    if (!requireAccount(id, accountPassword)) return;
     if (username.empty()) { logMgr.printFailure(); return; }
-    acc->modifyName(username);
+    accountMgr.findAccount(id)->modifyName(username);
     logMgr.printSuccess();
     logMgr.recordLog(logMgr.getCurrentCommand());
 }
 
 void BankSystem::modifyCredit(int id, double newCredit, int accountPassword) {
     if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
+    if (!requireAccount(id, accountPassword)) return;
     Account* acc = accountMgr.findAccount(id);
-    if (!acc || !userMgr.ownsAccount(id)) { logMgr.printFailure(); return; }
-    if (!acc->verifyAccountPassword(accountPassword)) { logMgr.printFailure(); return; }
     if (acc->getType() != 'C') { logMgr.printFailure(); return; }
     if (newCredit < 0) { logMgr.printFailure(); return; }
-    CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
-    creditAcc->modifyCredit(newCredit);
+    static_cast<CreditAccount*>(acc)->modifyCredit(newCredit);
     logMgr.printSuccess();
     logMgr.recordLog(logMgr.getCurrentCommand());
 }
@@ -125,9 +148,8 @@ void BankSystem::changeUserPassword(const std::string &oldPassword, const std::s
 }
 
 void BankSystem::changeAccountPassword(int id, int oldPassword, int newPassword) {
-    Account* acc = accountMgr.findAccount(id);
-    if (!acc || !userMgr.ownsAccount(id)) { logMgr.printFailure(); return; }
-    if (!acc->changeAccountPassword(oldPassword, newPassword)) { logMgr.printFailure(); return; }
+    if (!requireAccount(id, oldPassword)) return;
+    accountMgr.findAccount(id)->changeAccountPassword(oldPassword, newPassword);
     logMgr.printSuccess();
     logMgr.recordLog(logMgr.getCurrentCommand());
 }
@@ -151,7 +173,8 @@ void BankSystem::queryAllAccounts() const {
 }
 
 void BankSystem::deposit(int id, double amount, int accountPassword) {
-    if (transactionMgr.deposit(id, amount, accountPassword)) {
+    if (!requireAccount(id)) return;
+    if (accountMgr.deposit(id, amount, accountPassword)) {
         logMgr.printSuccess();
         logMgr.recordLog(logMgr.getCurrentCommand());
     } else {
@@ -160,7 +183,8 @@ void BankSystem::deposit(int id, double amount, int accountPassword) {
 }
 
 void BankSystem::withdraw(int id, double amount, int accountPassword) {
-    if (transactionMgr.withdraw(id, amount, accountPassword)) {
+    if (!requireAccount(id)) return;
+    if (accountMgr.withdraw(id, amount, accountPassword)) {
         logMgr.printSuccess();
         logMgr.recordLog(logMgr.getCurrentCommand());
     } else {
@@ -169,7 +193,8 @@ void BankSystem::withdraw(int id, double amount, int accountPassword) {
 }
 
 void BankSystem::transfer(int srcId, int dstId, double amount, int srcAccountPassword) {
-    if (transactionMgr.transfer(srcId, dstId, amount, srcAccountPassword)) {
+    if (!userMgr.ownsAccount(srcId)) { logMgr.printFailure(); return; }
+    if (accountMgr.transfer(srcId, dstId, amount, srcAccountPassword)) {
         logMgr.printSuccess();
         logMgr.recordLog(logMgr.getCurrentCommand());
     } else {
@@ -178,7 +203,8 @@ void BankSystem::transfer(int srcId, int dstId, double amount, int srcAccountPas
 }
 
 void BankSystem::fixedDeposit(int id, double amount, int months, int accountPassword) {
-    if (transactionMgr.fixedDeposit(id, amount, months, accountPassword)) {
+    if (!requireAccount(id)) return;
+    if (accountMgr.fixedDeposit(id, amount, months, accountPassword)) {
         logMgr.printSuccess();
         logMgr.recordLog(logMgr.getCurrentCommand());
     } else {
@@ -187,7 +213,8 @@ void BankSystem::fixedDeposit(int id, double amount, int months, int accountPass
 }
 
 void BankSystem::fixedWithdraw(int id, double amount, int accountPassword) {
-    if (transactionMgr.fixedWithdraw(id, amount, accountPassword)) {
+    if (!requireAccount(id)) return;
+    if (accountMgr.fixedWithdraw(id, amount, accountPassword)) {
         logMgr.printSuccess();
         logMgr.recordLog(logMgr.getCurrentCommand());
     } else {
@@ -196,7 +223,8 @@ void BankSystem::fixedWithdraw(int id, double amount, int accountPassword) {
 }
 
 void BankSystem::consume(int id, double amount, int accountPassword) {
-    if (transactionMgr.consume(id, amount, accountPassword)) {
+    if (!requireAccount(id)) return;
+    if (accountMgr.consume(id, amount, accountPassword)) {
         logMgr.printSuccess();
         logMgr.recordLog(logMgr.getCurrentCommand());
     } else {
@@ -205,7 +233,8 @@ void BankSystem::consume(int id, double amount, int accountPassword) {
 }
 
 void BankSystem::cashAdvance(int id, double amount, int accountPassword) {
-    if (transactionMgr.cashAdvance(id, amount, accountPassword)) {
+    if (!requireAccount(id)) return;
+    if (accountMgr.cashAdvance(id, amount, accountPassword)) {
         logMgr.printSuccess();
         logMgr.recordLog(logMgr.getCurrentCommand());
     } else {
@@ -215,12 +244,12 @@ void BankSystem::cashAdvance(int id, double amount, int accountPassword) {
 
 void BankSystem::showDate() const {
     if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
-    dateMgr.showDate();
+    accountMgr.showDate();
 }
 
 void BankSystem::addDays(int days) {
     if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
-    if (dateMgr.addDays(days)) {
+    if (accountMgr.addDays(days)) {
         logMgr.printSuccess();
         logMgr.recordLog(logMgr.getCurrentCommand());
     } else {
@@ -230,7 +259,7 @@ void BankSystem::addDays(int days) {
 
 void BankSystem::setDate(int year, int month, int day) {
     if (!userMgr.isAdmin()) { logMgr.printFailure(); return; }
-    if (dateMgr.setDate(year, month, day)) {
+    if (accountMgr.setDate(year, month, day)) {
         logMgr.printSuccess();
         logMgr.recordLog(logMgr.getCurrentCommand());
     } else {
@@ -304,7 +333,7 @@ void BankSystem::rollback(int n) {
 
     accountMgr.clearAccounts();
     userMgr.reset();
-    dateMgr.reset();
+    accountMgr.reset();
     logMgr.clear();
 
     replayCommands(cmdsToReplay);

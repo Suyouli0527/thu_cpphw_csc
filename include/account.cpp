@@ -1,4 +1,5 @@
 #include "account.h"
+#include "accountManager.h"
 
 Account::Account(int id, char type, const std::string &name, double balance, const Date &openDate, int pwd, bool isShared)
     : id(id), name(name), type(type), balance(balance), openDate(openDate),
@@ -35,7 +36,7 @@ void Account::settleMonthlyInterest() {
 void Account::updateInterest(const Date &targetDate) {
     Date current = lastInterestDate;
     while (current - targetDate < 0) {
-        double daily = InterestCalculator::calcDailyInterest(type, balance, current);
+        double daily = AccountManager::calcDailyInterest(type, balance, current);
         interest += daily;
         current.addDays(1);
         if (current.getDay() == 1) {
@@ -62,13 +63,13 @@ bool SavingAccount::withdraw(const Date &, double amount) {
 
 bool SavingAccount::fixedDeposit(const Date &date, double amount, int months) {
     if (amount < 0 || amount > balance) return false;
-    if (InterestCalculator::getFixedRate(months) == 0) return false;
+    if (AccountManager::getFixedRate(months) == 0) return false;
 
     Date maturity = date;
     int days = 0;
     for (int i = 0; i < 6; i++) {
-        if (InterestCalculator::fixedMonths[i] == months) {
-            days = InterestCalculator::fixedDays[i];
+        if (AccountManager::fixedMonths[i] == months) {
+            days = AccountManager::fixedDays[i];
             break;
         }
     }
@@ -85,7 +86,7 @@ bool SavingAccount::fixedWithdraw(const Date &date, double amount) {
 
     for (auto it = fixedDeposits.begin(); it != fixedDeposits.end(); ++it) {
         if (date - it->maturityDate < 0 && !it->partiallyWithdrawn && amount <= it->principal) {
-            double interest = InterestCalculator::calcEarlyWithdrawInterest(amount, it->depositDate, date);
+            double interest = AccountManager::calcEarlyWithdrawInterest(amount, it->depositDate, date);
             balance += amount + interest;
             it->principal -= amount;
             it->partiallyWithdrawn = true;
@@ -98,7 +99,7 @@ bool SavingAccount::fixedWithdraw(const Date &date, double amount) {
 void SavingAccount::updateFixedDeposits(const Date &date) {
     for (auto it = fixedDeposits.begin(); it != fixedDeposits.end(); ) {
         if (date - it->maturityDate >= 0) {
-            double interest = InterestCalculator::calcFixedInterest(it->principal, it->months);
+            double interest = AccountManager::calcFixedInterest(it->principal, it->months);
             balance += it->principal + interest;
             it = fixedDeposits.erase(it);
         } else {
@@ -228,7 +229,7 @@ void CreditAccount::updateCreditInterest(const Date &targetDate) {
             Date interestStart = txn.date;
             interestStart.addDays(1);
             if (next - interestStart >= 0) {
-                dailyInterest += txn.amount * InterestCalculator::debtRate;
+                dailyInterest += txn.amount * AccountManager::debtRate;
             }
         }
 
@@ -236,7 +237,7 @@ void CreditAccount::updateCreditInterest(const Date &targetDate) {
         for (const auto &txn : transactions) {
             if (txn.txnType != 'P') continue;
             if (!isWithinGracePeriod(txn.date, next)) {
-                dailyInterest += txn.amount * InterestCalculator::debtRate;
+                dailyInterest += txn.amount * AccountManager::debtRate;
             }
         }
 
