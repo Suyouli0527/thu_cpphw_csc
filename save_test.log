@@ -1,4 +1,0 @@
-1 SWITCH admin
-2 OPEN 1001 S savings 1000
-3 MODIFY NAME 1001 newsavings
-4 SET_DATE 2025 1 1
