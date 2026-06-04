@@ -2,25 +2,24 @@
 #include "date.h"
 #include "user.h"
 #include "account.h"
+#include "tools.h"
+#include "accountManager.h"
 #include "userManager.h"
+#include "dateManager.h"
+#include "transactionManager.h"
 #include "logManager.h"
 #include <vector>
 #include <string>
 
 class BankSystem {
 private:
-    std::vector<Account*> accounts;
-    std::vector<User> users;
-    std::string currentUserName;
-    Date currentDate;
-    std::vector<std::string> logRecords;
-    bool m_silent;
-    std::string m_currentCommand;
+    AccountManager accountMgr;
+    UserManager userMgr;
+    DateManager dateMgr;
+    LogManager logMgr;
+    TransactionManager transactionMgr;
 
     void replayCommands(const std::vector<std::string>& commands);
-    bool requireAdmin() const;
-    bool requireAccount(int id) const;
-    void logResult(bool ok);
 
 public:
     BankSystem();
@@ -56,11 +55,10 @@ public:
     void saveLog(const std::string &filename) const;
     void resume(const std::string &filename);
 
-    bool isLoggedIn() const { return UserManager::isLoggedIn(currentUserName); }
-    bool isAdmin() const { return UserManager::isAdmin(users, currentUserName); }
+    bool isLoggedIn() const { return userMgr.isLoggedIn(); }
+    bool isAdmin() const { return userMgr.isAdmin(); }
     bool isLegalName(const std::string &name) const { return UserManager::isLegalName(name); }
-    bool isInitialState() const { return LogManager::isInitialState(logRecords); }
-    void setSilent(bool s) { m_silent = s; }
-    void setRawCommand(const std::string &cmd) { m_currentCommand = cmd; }
-    const std::string& getCurrentCommand() const { return m_currentCommand; }
+    bool isInitialState() const { return logMgr.isInitialState(); }
+    void setSilent(bool s) { logMgr.setSilent(s); }
+    void setRawCommand(const std::string &cmd) { logMgr.setRawCommand(cmd); }
 };

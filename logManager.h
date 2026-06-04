@@ -1,16 +1,26 @@
 #pragma once
+#include "tools.h"
 #include <vector>
 #include <string>
 
 class LogManager {
-public:
-    LogManager() = delete;
+private:
+    std::vector<std::string> logRecords;
+    bool m_silent = false;
+    std::string m_currentCommand;
 
-    static void recordLog(std::vector<std::string>& logRecords, const std::string& cmd);
-    static void showLog(const std::vector<std::string>& logRecords, bool silent);
-    static void printSuccess(bool silent);
-    static void printFailure(bool silent);
-    static bool isInitialState(const std::vector<std::string>& logRecords);
-    static void saveLog(const std::vector<std::string>& logRecords, const std::string& filename, bool silent);
-    static void clear(std::vector<std::string>& logRecords);
+public:
+    void recordLog(const std::string &cmd);
+    void showLog() const;
+    void printSuccess() const;
+    void printFailure() const;
+
+    void setSilent(bool s) { m_silent = s; }
+    void setRawCommand(const std::string &cmd) { m_currentCommand = cmd; }
+    bool isInitialState() const { return logRecords.empty(); }
+    const std::string& getCurrentCommand() const { return m_currentCommand; }
+
+    void saveLog(const std::string &filename) const;
+    const std::vector<std::string>& getLogRecords() const { return logRecords; }
+    void clear();
 };

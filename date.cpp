@@ -91,15 +91,3 @@ bool Date::setDate(int y, int m, int d) {
     totalDays = newTotal;
     return true;
 }
-
-void Date::showDate(const Date &currentDate) {
-    currentDate.showDate();
-}
-
-bool Date::addDays(Date &currentDate, int days) {
-    return currentDate.addDays(days);
-}
-
-bool Date::setDate(Date &currentDate, int y, int m, int d) {
-    return currentDate.setDate(y, m, d);
-}
