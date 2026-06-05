@@ -33,12 +33,12 @@ public:
     const Date& getCurrentDate() const { return currentDate; }
     void reset();
 
-    bool deposit(int id, double amount, int accountPassword);
-    bool withdraw(int id, double amount, int accountPassword);
-    bool transfer(int srcId, int dstId, double amount, int srcAccountPassword);
-    bool fixedDeposit(int id, double amount, int months, int accountPassword, bool autoRenew);
-    bool fixedWithdraw(int id, double amount, int accountPassword);
-    bool consume(int id, double amount, int accountPassword);
+    bool deposit(int id, double amount, const std::string &accountPassword);
+    bool withdraw(int id, double amount, const std::string &accountPassword);
+    bool transfer(int srcId, int dstId, double amount, const std::string &srcAccountPassword);
+    bool fixedDeposit(int id, double amount, int months, const std::string &accountPassword, bool autoRenew);
+    bool fixedWithdraw(int id, double amount, const std::string &accountPassword);
+    bool consume(int id, double amount, const std::string &accountPassword);
 
 
 };

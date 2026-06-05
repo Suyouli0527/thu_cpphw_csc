@@ -31,12 +31,12 @@ public:
             if (type == 'C') {
                 if (!(iss >> repaymentDay)) return false;
             }
-            int accountPassword, sharedInt;
+            std::string accountPassword; int sharedInt;
             if (!(iss >> accountPassword >> sharedInt)) return false;
             system.openAccount(id, type, name, balance, repaymentDay, accountPassword, sharedInt != 0);
         }
         else if (cmd == "CLOSE") {
-            int id, accountPassword;
+            int id; std::string accountPassword;
             if (!(iss >> id >> accountPassword)) return false;
             system.closeAccount(id, accountPassword);
         }
@@ -44,11 +44,11 @@ public:
             std::string subCmd;
             if (!(iss >> subCmd)) return false;
             if (subCmd == "NAME") {
-                int id, accountPassword; std::string newName;
+                int id; std::string newName, accountPassword;
                 if (!(iss >> id >> newName >> accountPassword)) return false;
                 system.modifyName(id, newName, accountPassword);
             } else if (subCmd == "CREDIT") {
-                int id, accountPassword; double newCredit;
+                int id; double newCredit; std::string accountPassword;
                 if (!(iss >> id >> newCredit >> accountPassword)) return false;
                 system.modifyCredit(id, newCredit, accountPassword);
             } else if (subCmd == "SHARED") {
@@ -67,7 +67,7 @@ public:
             system.changeUserPassword(oldPassword, newPassword);
         }
         else if (cmd == "MODIFY_ACCOUNTPASSWORD") {
-            int id, oldPassword, newPassword;
+            int id; std::string oldPassword, newPassword;
             if (!(iss >> id >> oldPassword >> newPassword)) return false;
             system.changeAccountPassword(id, oldPassword, newPassword);
         }
@@ -100,7 +100,7 @@ public:
             system.removeOwner(id, userName);
         }
         else if (cmd == "QUERY") {
-            int id, accountPassword;
+            int id; std::string accountPassword;
             if (!(iss >> id >> accountPassword)) return false;
             system.query(id, accountPassword);
         }
@@ -108,27 +108,27 @@ public:
             system.queryAllAccounts();
         }
         else if (cmd == "DEPOSIT") {
-            int id, accountPassword; double amount;
+            int id; double amount; std::string accountPassword;
             if (!(iss >> id >> amount >> accountPassword)) return false;
             system.deposit(id, amount, accountPassword);
         }
         else if (cmd == "WITHDRAW") {
-            int id, accountPassword; double amount;
+            int id; double amount; std::string accountPassword;
             if (!(iss >> id >> amount >> accountPassword)) return false;
             system.withdraw(id, amount, accountPassword);
         }
         else if (cmd == "CONSUME") {
-            int id, accountPassword; double amount;
+            int id; double amount; std::string accountPassword;
             if (!(iss >> id >> amount >> accountPassword)) return false;
             system.consume(id, amount, accountPassword);
         }
         else if (cmd == "TRANSFER") {
-            int srcId, dstId, accountPassword; double amount;
+            int srcId, dstId; double amount; std::string accountPassword;
             if (!(iss >> srcId >> dstId >> amount >> accountPassword)) return false;
             system.transfer(srcId, dstId, amount, accountPassword);
         }
         else if (cmd == "FIXED_DEPOSIT") {
-            int id, accountPassword; double amount; int months;
+            int id, months; double amount; std::string accountPassword;
             if (!(iss >> id >> amount >> months >> accountPassword)) return false;
             std::string autoStr;
             bool autoRenew = false;
@@ -136,12 +136,12 @@ public:
             system.fixedDeposit(id, amount, months, accountPassword, autoRenew);
         }
         else if (cmd == "FIXED_WITHDRAW") {
-            int id, accountPassword; double amount;
+            int id; double amount; std::string accountPassword;
             if (!(iss >> id >> amount >> accountPassword)) return false;
             system.fixedWithdraw(id, amount, accountPassword);
         }
         else if (cmd == "SET_AUTORENEW") {
-            int id, index, accountPassword; std::string onOff;
+            int id, index; std::string onOff, accountPassword;
             if (!(iss >> id >> index >> onOff >> accountPassword)) return false;
             bool autoRenew;
             if (onOff == "ON") autoRenew = true;

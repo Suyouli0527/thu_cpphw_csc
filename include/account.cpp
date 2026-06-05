@@ -1,6 +1,6 @@
 #include "account.h"
 
-Account::Account(int id, char type, const std::string &name, double balance, const Date &openDate, int pwd, bool isShared)
+Account::Account(int id, char type, const std::string &name, double balance, const Date &openDate, const std::string &pwd, bool isShared)
     : id(id), name(name), type(type), balance(balance), openDate(openDate),
       lastInterestDate(openDate), interest(0.0), accountPassword(pwd), shared(isShared), frozen(false) {}
 
@@ -77,7 +77,7 @@ void Account::updateInterest(const Date &targetDate) {
     lastInterestDate = targetDate;
 }
 
-SavingAccount::SavingAccount(int id, char, const std::string &name, double balance, const Date &openDate, int pwd, bool isShared)
+SavingAccount::SavingAccount(int id, char, const std::string &name, double balance, const Date &openDate, const std::string &pwd, bool isShared)
     : Account(id, 'S', name, balance, openDate, pwd, isShared) {}
 
 bool SavingAccount::deposit(const Date &, double amount) {
@@ -163,7 +163,7 @@ bool SavingAccount::setAutoRenew(int index, bool autoRenew) {
     return true;
 }
 
-CreditAccount::CreditAccount(int id, char, const std::string &name, double creditAmount, int repDay, const Date &openDate, int pwd, bool isShared)
+CreditAccount::CreditAccount(int id, char, const std::string &name, double creditAmount, int repDay, const Date &openDate, const std::string &pwd, bool isShared)
     : Account(id, 'C', name, 0, openDate, pwd, isShared), credit(creditAmount),
       repaymentDay(repDay), cash_debt(0), consume_debt(0), consume_debt_overdue(0),
       lastInterestUpdate(openDate) {}

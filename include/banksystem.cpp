@@ -27,7 +27,7 @@ bool BankSystem::requireAccount(int id) const {
     return true;
 }
 
-bool BankSystem::requireAccount(int id, int accountPassword) const {
+bool BankSystem::requireAccount(int id, const std::string &accountPassword) const {
     Account* acc = accountMgr.findAccount(id);
     if (!acc || !userMgr.ownsAccount(id)) {
         logMgr.printFailure();
@@ -68,14 +68,14 @@ void BankSystem::logResult(bool ok) {
     }
 }
 
-void BankSystem::openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay, int accountPassword, bool shared) {
+void BankSystem::openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay, const std::string &accountPassword, bool shared) {
     if (id <= 0) { logMgr.printFailure(); return; }
     if (accountMgr.findAccount(id) != nullptr) { logMgr.printFailure(); return; }
     if (type != 'S' && type != 'C') { logMgr.printFailure(); return; }
     if (accountName.empty()) { logMgr.printFailure(); return; }
     if (balance < 0) { logMgr.printFailure(); return; }
     if (type == 'C' && (repaymentDay < 1 || repaymentDay > 28)) { logMgr.printFailure(); return; }
-    if (accountPassword < 100000 || accountPassword > 999999) { logMgr.printFailure(); return; }
+    if (!Account::isValidPassword(accountPassword)) { logMgr.printFailure(); return; }
 
     Account* newAccount = nullptr;
     if (type == 'S') {
@@ -93,7 +93,7 @@ void BankSystem::openAccount(int id, char type, const std::string &accountName, 
     logResult(true);
 }
 
-void BankSystem::closeAccount(int id, int accountPassword) {
+void BankSystem::closeAccount(int id, const std::string &accountPassword) {
     if (!requireAccount(id, accountPassword)) return;
     Account* acc = accountMgr.findAccount(id);
     if (acc->getBalance() != 0) { logMgr.printFailure(); return; }
@@ -157,14 +157,14 @@ void BankSystem::removeOwner(int id, const std::string &userName) {
     logResult(true);
 }
 
-void BankSystem::modifyName(int id, const std::string &username, int accountPassword) {
+void BankSystem::modifyName(int id, const std::string &username, const std::string &accountPassword) {
     if (!requireFullAccess(id) || !requireAccount(id, accountPassword)) return;
     if (username.empty()) { logMgr.printFailure(); return; }
     accountMgr.findAccount(id)->modifyName(username);
     logResult(true);
 }
 
-void BankSystem::modifyCredit(int id, double newCredit, int accountPassword) {
+void BankSystem::modifyCredit(int id, double newCredit, const std::string &accountPassword) {
     if (!requireAdmin()) return;
     if (!requireAccount(id, accountPassword)) return;
     Account* acc = accountMgr.findAccount(id);
@@ -205,13 +205,13 @@ void BankSystem::changeUserPassword(const std::string &oldPassword, const std::s
     logResult(true);
 }
 
-void BankSystem::changeAccountPassword(int id, int oldPassword, int newPassword) {
+void BankSystem::changeAccountPassword(int id, const std::string &oldPassword, const std::string &newPassword) {
     if (!requireAccount(id, oldPassword)) return;
     accountMgr.findAccount(id)->changeAccountPassword(oldPassword, newPassword);
     logResult(true);
 }
 
-void BankSystem::query(int id, int accountPassword) const {
+void BankSystem::query(int id, const std::string &accountPassword) const {
     Account* acc = accountMgr.findAccount(id);
     if (!acc || !userMgr.ownsAccount(id)) { logMgr.printFailure(); return; }
     if (!acc->verifyAccountPassword(accountPassword)) { logMgr.printFailure(); return; }
@@ -229,12 +229,12 @@ void BankSystem::queryAllAccounts() const {
     }
 }
 
-void BankSystem::deposit(int id, double amount, int accountPassword) {
+void BankSystem::deposit(int id, double amount, const std::string &accountPassword) {
     if (!requireAccount(id)) return;
     logResult(accountMgr.deposit(id, amount, accountPassword));
 }
 
-void BankSystem::withdraw(int id, double amount, int accountPassword) {
+void BankSystem::withdraw(int id, double amount, const std::string &accountPassword) {
     if (!requireAccount(id)) return;
     Account* acc = accountMgr.findAccount(id);
     OwnerLevel level = acc->getOwnerLevel(userMgr.getCurrentUserName());
@@ -245,30 +245,30 @@ void BankSystem::withdraw(int id, double amount, int accountPassword) {
     logResult(accountMgr.withdraw(id, amount, accountPassword));
 }
 
-void BankSystem::transfer(int srcId, int dstId, double amount, int srcAccountPassword) {
+void BankSystem::transfer(int srcId, int dstId, double amount, const std::string &srcAccountPassword) {
     if (!userMgr.ownsAccount(srcId)) { logMgr.printFailure(); return; }
     if (!requireFullAccess(srcId)) return;
     logResult(accountMgr.transfer(srcId, dstId, amount, srcAccountPassword));
 }
 
-void BankSystem::fixedDeposit(int id, double amount, int months, int accountPassword, bool autoRenew) {
+void BankSystem::fixedDeposit(int id, double amount, int months, const std::string &accountPassword, bool autoRenew) {
     if (!requireFullAccess(id)) return;
     logResult(accountMgr.fixedDeposit(id, amount, months, accountPassword, autoRenew));
 }
 
-void BankSystem::fixedWithdraw(int id, double amount, int accountPassword) {
+void BankSystem::fixedWithdraw(int id, double amount, const std::string &accountPassword) {
     if (!requireFullAccess(id)) return;
     logResult(accountMgr.fixedWithdraw(id, amount, accountPassword));
 }
 
-void BankSystem::setAutoRenew(int id, int index, bool autoRenew, int accountPassword) {
+void BankSystem::setAutoRenew(int id, int index, bool autoRenew, const std::string &accountPassword) {
     if (!requireAccount(id, accountPassword)) return;
     Account* acc = accountMgr.findAccount(id);
     if (!acc || acc->getType() != 'S') { logMgr.printFailure(); return; }
     logResult(static_cast<SavingAccount*>(acc)->setAutoRenew(index, autoRenew));
 }
 
-void BankSystem::consume(int id, double amount, int accountPassword) {
+void BankSystem::consume(int id, double amount, const std::string &accountPassword) {
     if (!requireFullAccess(id)) return;
     logResult(accountMgr.consume(id, amount, accountPassword));
 }

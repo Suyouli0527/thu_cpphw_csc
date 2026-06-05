@@ -19,7 +19,7 @@ private:
     void replayCommands(const std::vector<std::string>& commands);
     bool requireAdmin() const;
     bool requireAccount(int id) const;
-    bool requireAccount(int id, int accountPassword) const;
+    bool requireAccount(int id, const std::string &accountPassword) const;
     bool requireFullAccess(int id) const;
     void logResult(bool ok);
 
@@ -30,28 +30,28 @@ public:
     BankSystem(const BankSystem&) = delete;
     BankSystem& operator=(const BankSystem&) = delete;
 
-    void openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay, int accountPassword, bool shared);
-    void closeAccount(int id, int accountPassword);
+    void openAccount(int id, char type, const std::string &accountName, double balance, int repaymentDay, const std::string &accountPassword, bool shared);
+    void closeAccount(int id, const std::string &accountPassword);
     void addOwner(int id, const std::string &userName, const std::string &levelStr, double withdrawLimit);
     void removeOwner(int id, const std::string &userName);
     void modifyOwnerLimit(int id, const std::string &userName, double newLimit);
-    void modifyName(int id, const std::string &username, int accountPassword);
-    void modifyCredit(int id, double newCredit, int accountPassword);
+    void modifyName(int id, const std::string &username, const std::string &accountPassword);
+    void modifyCredit(int id, double newCredit, const std::string &accountPassword);
     void modifyShared(int id, bool shared);
     void freezeAccount(int id);
     void unfreezeAccount(int id);
     void changeUserPassword(const std::string &oldPassword, const std::string &newPassword);
-    void changeAccountPassword(int id, int oldPassword, int newPassword);
-    void query(int id, int accountPassword) const;
+    void changeAccountPassword(int id, const std::string &oldPassword, const std::string &newPassword);
+    void query(int id, const std::string &accountPassword) const;
     void queryAllAccounts() const;
 
-    void deposit(int id, double amount, int accountPassword);
-    void withdraw(int id, double amount, int accountPassword);
-    void transfer(int srcId, int dstId, double amount, int srcAccountPassword);
-    void fixedDeposit(int id, double amount, int months, int accountPassword, bool autoRenew);
-    void fixedWithdraw(int id, double amount, int accountPassword);
-    void setAutoRenew(int id, int index, bool autoRenew, int accountPassword);
-    void consume(int id, double amount, int accountPassword);
+    void deposit(int id, double amount, const std::string &accountPassword);
+    void withdraw(int id, double amount, const std::string &accountPassword);
+    void transfer(int srcId, int dstId, double amount, const std::string &srcAccountPassword);
+    void fixedDeposit(int id, double amount, int months, const std::string &accountPassword, bool autoRenew);
+    void fixedWithdraw(int id, double amount, const std::string &accountPassword);
+    void setAutoRenew(int id, int index, bool autoRenew, const std::string &accountPassword);
+    void consume(int id, double amount, const std::string &accountPassword);
 
     void showDate() const;
     void addDays(int days);

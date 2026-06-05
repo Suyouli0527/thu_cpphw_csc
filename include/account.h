@@ -21,13 +21,13 @@ protected:
     Date openDate;
     Date lastInterestDate;
     double interest;
-    int accountPassword;
+    std::string accountPassword;
     bool shared;
     bool frozen;
     std::vector<OwnerInfo> owners;
 
 public:
-    Account(int id, char type, const std::string &name, double balance, const Date &openDate, int pwd, bool isShared);
+    Account(int id, char type, const std::string &name, double balance, const Date &openDate, const std::string &pwd, bool isShared);
     virtual ~Account() = default;
 
     void updateInterest(const Date &targetDate);
@@ -52,10 +52,17 @@ public:
     bool modifyOwnerLimit(const std::string &userName, double newLimit);
     OwnerLevel getOwnerLevel(const std::string &userName) const;
     double getWithdrawLimit(const std::string &userName) const;
-    bool verifyAccountPassword(int pwd) const { return accountPassword == pwd; }
-    bool changeAccountPassword(int oldPwd, int newPwd) {
+    static bool isValidPassword(const std::string &pwd) {
+        if (pwd.length() != 6) return false;
+        for (char c : pwd) {
+            if (c < '0' || c > '9') return false;
+        }
+        return true;
+    }
+    bool verifyAccountPassword(const std::string &pwd) const { return accountPassword == pwd; }
+    bool changeAccountPassword(const std::string &oldPwd, const std::string &newPwd) {
         if (accountPassword != oldPwd) return false;
-        if (newPwd < 100000 || newPwd > 999999) return false;
+        if (!isValidPassword(newPwd)) return false;
         accountPassword = newPwd;
         return true;
     }
@@ -76,7 +83,7 @@ class SavingAccount : public Account {
     std::vector<FixedDeposit> fixedDeposits;
 
 public:
-    SavingAccount(int id, char type, const std::string &name, double balance, const Date &openDate, int pwd, bool isShared);
+    SavingAccount(int id, char type, const std::string &name, double balance, const Date &openDate, const std::string &pwd, bool isShared);
     bool deposit(const Date &date, double amount) override;
     bool withdraw(const Date &date, double amount) override;
 
@@ -102,7 +109,7 @@ private:
     bool isWithinGracePeriod(const Date &consumeDate, const Date &checkDate) const;
 
 public:
-    CreditAccount(int id, char type, const std::string &name, double creditAmount, int repDay, const Date &openDate, int pwd, bool isShared);
+    CreditAccount(int id, char type, const std::string &name, double creditAmount, int repDay, const Date &openDate, const std::string &pwd, bool isShared);
     bool deposit(const Date &date, double amount) override;
     bool withdraw(const Date &date, double amount) override;
     bool consume(const Date &date, double amount);

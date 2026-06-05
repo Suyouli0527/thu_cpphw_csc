@@ -169,21 +169,21 @@ void AccountManager::reset() {
     currentDate = Date(1970, 1, 1);
 }
 
-bool AccountManager::deposit(int id, double amount, int accountPassword) {
+bool AccountManager::deposit(int id, double amount, const std::string &accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || !acc->verifyAccountPassword(accountPassword)) return false;
     if (acc->isFrozen()) return false;
     return acc->deposit(currentDate, amount);
 }
 
-bool AccountManager::withdraw(int id, double amount, int accountPassword) {
+bool AccountManager::withdraw(int id, double amount, const std::string &accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || !acc->verifyAccountPassword(accountPassword)) return false;
     if (acc->isFrozen()) return false;
     return acc->withdraw(currentDate, amount);
 }
 
-bool AccountManager::transfer(int srcId, int dstId, double amount, int srcAccountPassword) {
+bool AccountManager::transfer(int srcId, int dstId, double amount, const std::string &srcAccountPassword) {
     if (srcId == dstId) return false;
     Account* srcAcc = findAccount(srcId);
     Account* dstAcc = findAccount(dstId);
@@ -195,7 +195,7 @@ bool AccountManager::transfer(int srcId, int dstId, double amount, int srcAccoun
     return true;
 }
 
-bool AccountManager::fixedDeposit(int id, double amount, int months, int accountPassword, bool autoRenew) {
+bool AccountManager::fixedDeposit(int id, double amount, int months, const std::string &accountPassword, bool autoRenew) {
     Account* acc = findAccount(id);
     if (!acc || acc->getType() != 'S') return false;
     if (acc->isFrozen()) return false;
@@ -204,7 +204,7 @@ bool AccountManager::fixedDeposit(int id, double amount, int months, int account
     return savingAcc->fixedDeposit(currentDate, amount, months, autoRenew);
 }
 
-bool AccountManager::fixedWithdraw(int id, double amount, int accountPassword) {
+bool AccountManager::fixedWithdraw(int id, double amount, const std::string &accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || acc->getType() != 'S') return false;
     if (acc->isFrozen()) return false;
@@ -213,7 +213,7 @@ bool AccountManager::fixedWithdraw(int id, double amount, int accountPassword) {
     return savingAcc->fixedWithdraw(currentDate, amount);
 }
 
-bool AccountManager::consume(int id, double amount, int accountPassword) {
+bool AccountManager::consume(int id, double amount, const std::string &accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || acc->getType() != 'C') return false;
     if (acc->isFrozen()) return false;
