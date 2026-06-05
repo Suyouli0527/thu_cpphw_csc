@@ -1,7 +1,16 @@
 #pragma once
 #include "date.h"
+#include "interestCalculator.h"
 #include <string>
 #include <vector>
+
+enum class OwnerLevel { FULL, RESTRICTED };
+
+struct OwnerInfo {
+    std::string name;
+    OwnerLevel level;
+    double withdrawLimit;
+};
 
 class Account {
 protected:
@@ -14,7 +23,8 @@ protected:
     double interest;
     int accountPassword;
     bool shared;
-    std::vector<std::string> owners;
+    bool frozen;
+    std::vector<OwnerInfo> owners;
 
 public:
     Account(int id, char type, const std::string &name, double balance, const Date &openDate, int pwd, bool isShared);
@@ -33,9 +43,15 @@ public:
     Date getOpenDate() const { return openDate; }
     bool isShared() const { return shared; }
     void setShared(bool s) { shared = s; }
-    const std::vector<std::string>& getOwners() const { return owners; }
-    void addOwner(const std::string &userName);
+    bool isFrozen() const { return frozen; }
+    void setFrozen(bool f) { frozen = f; }
+    const std::vector<OwnerInfo>& getOwners() const { return owners; }
+    std::vector<std::string> getOwnerNames() const;
+    void addOwner(const std::string &userName, OwnerLevel level, double withdrawLimit);
     void removeOwner(const std::string &userName);
+    bool modifyOwnerLimit(const std::string &userName, double newLimit);
+    OwnerLevel getOwnerLevel(const std::string &userName) const;
+    double getWithdrawLimit(const std::string &userName) const;
     bool verifyAccountPassword(int pwd) const { return accountPassword == pwd; }
     bool changeAccountPassword(int oldPwd, int newPwd) {
         if (accountPassword != oldPwd) return false;
@@ -53,6 +69,7 @@ struct FixedDeposit {
     Date depositDate;
     Date maturityDate;
     bool partiallyWithdrawn;
+    bool autoRenew;
 };
 
 class SavingAccount : public Account {
@@ -63,7 +80,7 @@ public:
     bool deposit(const Date &date, double amount) override;
     bool withdraw(const Date &date, double amount) override;
 
-    bool fixedDeposit(const Date &date, double amount, int months);
+    bool fixedDeposit(const Date &date, double amount, int months, bool autoRenew);
     bool fixedWithdraw(const Date &date, double amount);
     void updateFixedDeposits(const Date &date);
     std::vector<FixedDeposit>& getFixedDeposits() { return fixedDeposits; }

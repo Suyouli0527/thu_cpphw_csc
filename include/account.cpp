@@ -1,26 +1,57 @@
 #include "account.h"
-#include "accountManager.h"
 
 Account::Account(int id, char type, const std::string &name, double balance, const Date &openDate, int pwd, bool isShared)
     : id(id), name(name), type(type), balance(balance), openDate(openDate),
-      lastInterestDate(openDate), interest(0.0), accountPassword(pwd), shared(isShared) {}
+      lastInterestDate(openDate), interest(0.0), accountPassword(pwd), shared(isShared), frozen(false) {}
 
-void Account::addOwner(const std::string &userName) {
+std::vector<std::string> Account::getOwnerNames() const {
+    std::vector<std::string> names;
+    for (const auto &o : owners) {
+        names.push_back(o.name);
+    }
+    return names;
+}
+
+void Account::addOwner(const std::string &userName, OwnerLevel level, double withdrawLimit) {
     if (owners.size() >= 5) return;
     for (const auto &o : owners) {
-        if (o == userName) return;
+        if (o.name == userName) return;
     }
-    owners.push_back(userName);
+    owners.push_back({userName, level, level == OwnerLevel::RESTRICTED ? withdrawLimit : 0.0});
 }
 
 void Account::removeOwner(const std::string &userName) {
     if (owners.size() <= 1) return;
     for (auto it = owners.begin(); it != owners.end(); ++it) {
-        if (*it == userName) {
+        if (it->name == userName) {
             owners.erase(it);
             return;
         }
     }
+}
+
+bool Account::modifyOwnerLimit(const std::string &userName, double newLimit) {
+    for (auto &o : owners) {
+        if (o.name == userName && o.level == OwnerLevel::RESTRICTED) {
+            o.withdrawLimit = newLimit;
+            return true;
+        }
+    }
+    return false;
+}
+
+OwnerLevel Account::getOwnerLevel(const std::string &userName) const {
+    for (const auto &o : owners) {
+        if (o.name == userName) return o.level;
+    }
+    return OwnerLevel::RESTRICTED;
+}
+
+double Account::getWithdrawLimit(const std::string &userName) const {
+    for (const auto &o : owners) {
+        if (o.name == userName) return o.withdrawLimit;
+    }
+    return 0;
 }
 
 bool Account::modifyName(const std::string &newName) {
@@ -36,7 +67,7 @@ void Account::settleMonthlyInterest() {
 void Account::updateInterest(const Date &targetDate) {
     Date current = lastInterestDate;
     while (current - targetDate < 0) {
-        double daily = AccountManager::calcDailyInterest(type, balance, current);
+        double daily = InterestCalculator::calcDailyInterest(type, balance, current);
         interest += daily;
         current.addDays(1);
         if (current.getDay() == 1) {
@@ -61,15 +92,15 @@ bool SavingAccount::withdraw(const Date &, double amount) {
     return true;
 }
 
-bool SavingAccount::fixedDeposit(const Date &date, double amount, int months) {
+bool SavingAccount::fixedDeposit(const Date &date, double amount, int months, bool autoRenew) {
     if (amount < 0 || amount > balance) return false;
-    if (AccountManager::getFixedRate(months) == 0) return false;
+    if (InterestCalculator::getFixedRate(months) == 0) return false;
 
     Date maturity = date;
     int days = 0;
     for (int i = 0; i < 6; i++) {
-        if (AccountManager::fixedMonths[i] == months) {
-            days = AccountManager::fixedDays[i];
+        if (InterestCalculator::fixedMonths[i] == months) {
+            days = InterestCalculator::fixedDays[i];
             break;
         }
     }
@@ -77,7 +108,7 @@ bool SavingAccount::fixedDeposit(const Date &date, double amount, int months) {
     maturity.addDays(days);
 
     balance -= amount;
-    fixedDeposits.push_back({amount, months, date, maturity, false});
+    fixedDeposits.push_back({amount, months, date, maturity, false, autoRenew});
     return true;
 }
 
@@ -86,7 +117,7 @@ bool SavingAccount::fixedWithdraw(const Date &date, double amount) {
 
     for (auto it = fixedDeposits.begin(); it != fixedDeposits.end(); ++it) {
         if (date - it->maturityDate < 0 && !it->partiallyWithdrawn && amount <= it->principal) {
-            double interest = AccountManager::calcEarlyWithdrawInterest(amount, it->depositDate, date);
+            double interest = InterestCalculator::calcEarlyWithdrawInterest(amount, it->depositDate, date);
             balance += amount + interest;
             it->principal -= amount;
             it->partiallyWithdrawn = true;
@@ -99,9 +130,27 @@ bool SavingAccount::fixedWithdraw(const Date &date, double amount) {
 void SavingAccount::updateFixedDeposits(const Date &date) {
     for (auto it = fixedDeposits.begin(); it != fixedDeposits.end(); ) {
         if (date - it->maturityDate >= 0) {
-            double interest = AccountManager::calcFixedInterest(it->principal, it->months);
-            balance += it->principal + interest;
-            it = fixedDeposits.erase(it);
+            if (it->autoRenew) {
+                double interest = InterestCalculator::calcFixedInterest(it->principal, it->months);
+                double newPrincipal = it->principal + interest;
+                int days = 0;
+                for (int i = 0; i < 6; i++) {
+                    if (InterestCalculator::fixedMonths[i] == it->months) {
+                        days = InterestCalculator::fixedDays[i];
+                        break;
+                    }
+                }
+                Date newMaturity = date;
+                newMaturity.addDays(days);
+                it->principal = newPrincipal;
+                it->depositDate = date;
+                it->maturityDate = newMaturity;
+                ++it;
+            } else {
+                double interest = InterestCalculator::calcFixedInterest(it->principal, it->months);
+                balance += it->principal + interest;
+                it = fixedDeposits.erase(it);
+            }
         } else {
             ++it;
         }
@@ -190,9 +239,9 @@ void CreditAccount::updateCreditInterest(const Date &targetDate) {
 
         double dailyInterest = 0;
         // 取现债务：全部按日计息
-        dailyInterest += cash_debt * AccountManager::debtRate;
+        dailyInterest += cash_debt * InterestCalculator::debtRate;
         // 消费债务：只有已出免息期的按日计息
-        dailyInterest += consume_debt_overdue * AccountManager::debtRate;
+        dailyInterest += consume_debt_overdue * InterestCalculator::debtRate;
 
         balance -= dailyInterest;
         current = next;

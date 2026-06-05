@@ -3,50 +3,6 @@
 #include <iomanip>
 #include <sstream>
 
-const double AccountManager::savingRate = 0.0115;
-const double AccountManager::creditRate = 0.0225;
-const double AccountManager::debtRate = 0.0005;
-const int AccountManager::fixedMonths[] = {3, 6, 12, 24, 36, 60};
-const double AccountManager::fixedRates[] = {0.0135, 0.0155, 0.0175, 0.0225, 0.0275, 0.0300};
-const int AccountManager::fixedDays[] = {90, 180, 365, 730, 1095, 1825};
-
-double AccountManager::calcDailyInterest(char type, double balance, const Date &date) {
-    double dailyRate;
-    switch (type) {
-        case 'S':
-            dailyRate = savingRate / date.daysInYear();
-            break;
-        case 'C':
-            if (balance >= 0) {
-                dailyRate = creditRate / date.daysInYear();
-            } else {
-                dailyRate = debtRate;
-            }
-            break;
-        default:
-            return 0;
-    }
-    return balance * dailyRate;
-}
-
-double AccountManager::getFixedRate(int months) {
-    for (int i = 0; i < 6; i++) {
-        if (fixedMonths[i] == months) return fixedRates[i];
-    }
-    return 0;
-}
-
-double AccountManager::calcFixedInterest(double principal, int months) {
-    double rate = getFixedRate(months);
-    return principal * rate * months / 12.0;
-}
-
-double AccountManager::calcEarlyWithdrawInterest(double principal, const Date &depositDate, const Date &withdrawDate) {
-    int days = withdrawDate - depositDate;
-    if (days <= 0) return 0;
-    return principal * savingRate * days / withdrawDate.daysInYear();
-}
-
 AccountManager::AccountManager() : currentDate(1970, 1, 1) {}
 
 AccountManager::~AccountManager() {
@@ -113,10 +69,11 @@ void AccountManager::printAccountInfo(int id) const {
               << acc->getType() << " "
               << acc->getName() << " "
               << formatAmount(acc->getBalance());
+    if (acc->isFrozen()) std::cout << " FROZEN";
     if (acc->isShared()) {
         std::cout << " SHARED";
         for (const auto &o : acc->getOwners()) {
-            std::cout << " " << o;
+            std::cout << " " << o.name << (o.level == OwnerLevel::FULL ? "(F)" : "(R)");
         }
     } else {
         std::cout << " NOT_SHARED";
@@ -154,11 +111,12 @@ void AccountManager::printAccountDetail(int id) const {
     std::cout << "  类型: " << (acc->getType() == 'S' ? "储蓄账户" : "信用账户") << std::endl;
     std::cout << "  名称: " << acc->getName() << std::endl;
     std::cout << "  余额: " << formatAmount(acc->getBalance()) << std::endl;
+    std::cout << "  状态: " << (acc->isFrozen() ? "已冻结" : "正常") << std::endl;
     std::cout << "  共享: " << (acc->isShared() ? "是" : "否");
     if (acc->isShared()) {
         std::cout << "  共有人:";
         for (const auto &o : acc->getOwners()) {
-            std::cout << " " << o;
+            std::cout << " " << o.name << "(" << (o.level == OwnerLevel::FULL ? "全权限" : "限取款") << ")";
         }
     }
     std::cout << std::endl;
@@ -214,12 +172,14 @@ void AccountManager::reset() {
 bool AccountManager::deposit(int id, double amount, int accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || !acc->verifyAccountPassword(accountPassword)) return false;
+    if (acc->isFrozen()) return false;
     return acc->deposit(currentDate, amount);
 }
 
 bool AccountManager::withdraw(int id, double amount, int accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || !acc->verifyAccountPassword(accountPassword)) return false;
+    if (acc->isFrozen()) return false;
     return acc->withdraw(currentDate, amount);
 }
 
@@ -228,23 +188,26 @@ bool AccountManager::transfer(int srcId, int dstId, double amount, int srcAccoun
     Account* srcAcc = findAccount(srcId);
     Account* dstAcc = findAccount(dstId);
     if (!srcAcc || !dstAcc) return false;
+    if (srcAcc->isFrozen()) return false;
     if (!srcAcc->verifyAccountPassword(srcAccountPassword)) return false;
     if (!srcAcc->withdraw(currentDate, amount)) return false;
     dstAcc->deposit(currentDate, amount);
     return true;
 }
 
-bool AccountManager::fixedDeposit(int id, double amount, int months, int accountPassword) {
+bool AccountManager::fixedDeposit(int id, double amount, int months, int accountPassword, bool autoRenew) {
     Account* acc = findAccount(id);
     if (!acc || acc->getType() != 'S') return false;
+    if (acc->isFrozen()) return false;
     if (!acc->verifyAccountPassword(accountPassword)) return false;
     SavingAccount* savingAcc = static_cast<SavingAccount*>(acc);
-    return savingAcc->fixedDeposit(currentDate, amount, months);
+    return savingAcc->fixedDeposit(currentDate, amount, months, autoRenew);
 }
 
 bool AccountManager::fixedWithdraw(int id, double amount, int accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || acc->getType() != 'S') return false;
+    if (acc->isFrozen()) return false;
     if (!acc->verifyAccountPassword(accountPassword)) return false;
     SavingAccount* savingAcc = static_cast<SavingAccount*>(acc);
     return savingAcc->fixedWithdraw(currentDate, amount);
@@ -253,6 +216,7 @@ bool AccountManager::fixedWithdraw(int id, double amount, int accountPassword) {
 bool AccountManager::consume(int id, double amount, int accountPassword) {
     Account* acc = findAccount(id);
     if (!acc || acc->getType() != 'C') return false;
+    if (acc->isFrozen()) return false;
     if (!acc->verifyAccountPassword(accountPassword)) return false;
     CreditAccount* creditAcc = static_cast<CreditAccount*>(acc);
     return creditAcc->consume(currentDate, amount);
