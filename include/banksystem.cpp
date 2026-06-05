@@ -40,6 +40,17 @@ bool BankSystem::requireAccount(int id, int accountPassword) const {
     return true;
 }
 
+bool BankSystem::requireFullAccess(int id) const {
+    Account* acc = accountMgr.findAccount(id);
+    if (!acc) { logMgr.printFailure(); return false; }
+    OwnerLevel level = acc->getOwnerLevel(userMgr.getCurrentUserName());
+    if (level != OwnerLevel::FULL && !userMgr.isAdmin()) {
+        logMgr.printFailure();
+        return false;
+    }
+    return true;
+}
+
 bool BankSystem::requireAdmin() const {
     if (!userMgr.isAdmin()) {
         logMgr.printFailure();
@@ -72,7 +83,7 @@ void BankSystem::openAccount(int id, char type, const std::string &accountName, 
     } else {
         newAccount = new CreditAccount(id, type, accountName, balance, repaymentDay, accountMgr.getCurrentDate(), accountPassword, shared);
     }
-    newAccount->addOwner(userMgr.getCurrentUserName());
+    newAccount->addOwner(userMgr.getCurrentUserName(), OwnerLevel::FULL, 0);
     if (!accountMgr.addAccount(newAccount)) {
         delete newAccount;
         logMgr.printFailure();
@@ -90,24 +101,42 @@ void BankSystem::closeAccount(int id, int accountPassword) {
         SavingAccount* sa = static_cast<SavingAccount*>(acc);
         if (sa->getFixedDepositCount() > 0) { logMgr.printFailure(); return; }
     }
-    for (const auto &ownerName : acc->getOwners()) {
-        userMgr.removeAccountFromUser(ownerName, id);
+    for (const auto &o : acc->getOwners()) {
+        userMgr.removeAccountFromUser(o.name, id);
     }
     accountMgr.removeAccount(id);
     logResult(true);
 }
 
-void BankSystem::addOwner(int id, const std::string &userName) {
+void BankSystem::addOwner(int id, const std::string &userName, const std::string &levelStr, double withdrawLimit) {
     if (!requireAdmin()) return;
     Account* acc = accountMgr.findAccount(id);
     if (!acc) { logMgr.printFailure(); return; }
     if (!acc->isShared()) { logMgr.printFailure(); return; }
     User* targetUser = userMgr.findUser(userName);
     if (!targetUser) { logMgr.printFailure(); return; }
+    OwnerLevel level;
+    if (levelStr == "FULL") level = OwnerLevel::FULL;
+    else if (levelStr == "RESTRICTED") level = OwnerLevel::RESTRICTED;
+    else { logMgr.printFailure(); return; }
     auto before = acc->getOwners().size();
-    acc->addOwner(userName);
+    acc->addOwner(userName, level, withdrawLimit);
     if (acc->getOwners().size() == before) { logMgr.printFailure(); return; }
     targetUser->addAccountID(id);
+    logResult(true);
+}
+
+void BankSystem::modifyOwnerLimit(int id, const std::string &userName, double newLimit) {
+    Account* acc = accountMgr.findAccount(id);
+    if (!acc) { logMgr.printFailure(); return; }
+    if (!acc->isShared()) { logMgr.printFailure(); return; }
+    // 当前用户必须是同级别共有人（FULL）或管理员
+    OwnerLevel currentLevel = acc->getOwnerLevel(userMgr.getCurrentUserName());
+    if (currentLevel != OwnerLevel::FULL && !userMgr.isAdmin()) {
+        logMgr.printFailure();
+        return;
+    }
+    if (!acc->modifyOwnerLimit(userName, newLimit)) { logMgr.printFailure(); return; }
     logResult(true);
 }
 
@@ -116,6 +145,12 @@ void BankSystem::removeOwner(int id, const std::string &userName) {
     Account* acc = accountMgr.findAccount(id);
     if (!acc) { logMgr.printFailure(); return; }
     if (!acc->isShared()) { logMgr.printFailure(); return; }
+    // 检查当前用户是否有权限移除（FULL或admin）
+    OwnerLevel currentLevel = acc->getOwnerLevel(userMgr.getCurrentUserName());
+    if (currentLevel != OwnerLevel::FULL && !userMgr.isAdmin()) {
+        logMgr.printFailure();
+        return;
+    }
     auto before = acc->getOwners().size();
     acc->removeOwner(userName);
     if (acc->getOwners().size() == before) { logMgr.printFailure(); return; }
@@ -125,7 +160,7 @@ void BankSystem::removeOwner(int id, const std::string &userName) {
 }
 
 void BankSystem::modifyName(int id, const std::string &username, int accountPassword) {
-    if (!requireAccount(id, accountPassword)) return;
+    if (!requireFullAccess(id) || !requireAccount(id, accountPassword)) return;
     if (username.empty()) { logMgr.printFailure(); return; }
     accountMgr.findAccount(id)->modifyName(username);
     logResult(true);
@@ -146,6 +181,22 @@ void BankSystem::modifyShared(int id, bool shared) {
     Account* acc = accountMgr.findAccount(id);
     if (!acc) { logMgr.printFailure(); return; }
     acc->setShared(shared);
+    logResult(true);
+}
+
+void BankSystem::freezeAccount(int id) {
+    if (!requireAdmin()) return;
+    Account* acc = accountMgr.findAccount(id);
+    if (!acc) { logMgr.printFailure(); return; }
+    acc->setFrozen(true);
+    logResult(true);
+}
+
+void BankSystem::unfreezeAccount(int id) {
+    if (!requireAdmin()) return;
+    Account* acc = accountMgr.findAccount(id);
+    if (!acc) { logMgr.printFailure(); return; }
+    acc->setFrozen(false);
     logResult(true);
 }
 
@@ -187,26 +238,33 @@ void BankSystem::deposit(int id, double amount, int accountPassword) {
 
 void BankSystem::withdraw(int id, double amount, int accountPassword) {
     if (!requireAccount(id)) return;
+    Account* acc = accountMgr.findAccount(id);
+    OwnerLevel level = acc->getOwnerLevel(userMgr.getCurrentUserName());
+    if (level == OwnerLevel::RESTRICTED) {
+        double limit = acc->getWithdrawLimit(userMgr.getCurrentUserName());
+        if (amount > limit) { logMgr.printFailure(); return; }
+    }
     logResult(accountMgr.withdraw(id, amount, accountPassword));
 }
 
 void BankSystem::transfer(int srcId, int dstId, double amount, int srcAccountPassword) {
     if (!userMgr.ownsAccount(srcId)) { logMgr.printFailure(); return; }
+    if (!requireFullAccess(srcId)) return;
     logResult(accountMgr.transfer(srcId, dstId, amount, srcAccountPassword));
 }
 
-void BankSystem::fixedDeposit(int id, double amount, int months, int accountPassword) {
-    if (!requireAccount(id)) return;
-    logResult(accountMgr.fixedDeposit(id, amount, months, accountPassword));
+void BankSystem::fixedDeposit(int id, double amount, int months, int accountPassword, bool autoRenew) {
+    if (!requireFullAccess(id)) return;
+    logResult(accountMgr.fixedDeposit(id, amount, months, accountPassword, autoRenew));
 }
 
 void BankSystem::fixedWithdraw(int id, double amount, int accountPassword) {
-    if (!requireAccount(id)) return;
+    if (!requireFullAccess(id)) return;
     logResult(accountMgr.fixedWithdraw(id, amount, accountPassword));
 }
 
 void BankSystem::consume(int id, double amount, int accountPassword) {
-    if (!requireAccount(id)) return;
+    if (!requireFullAccess(id)) return;
     logResult(accountMgr.consume(id, amount, accountPassword));
 }
 

@@ -41,7 +41,7 @@ bool UserManager::ownsAccount(int id) const {
     Account* acc = accountMgr->findAccount(id);
     if (!acc) return false;
     for (const auto &o : acc->getOwners()) {
-        if (o == currentUserName) return true;
+        if (o.name == currentUserName) return true;
     }
     return false;
 }

@@ -73,9 +73,27 @@ public:
             system.changeAccountPassword(id, oldPassword, newPassword);
         }
         else if (cmd == "ADD_OWNER") {
-            int id; std::string userName;
-            if (!(iss >> id >> userName)) return false;
-            system.addOwner(id, userName);
+            int id; std::string userName, levelStr; double withdrawLimit = 0;
+            if (!(iss >> id >> userName >> levelStr)) return false;
+            if (levelStr == "RESTRICTED") {
+                if (!(iss >> withdrawLimit)) return false;
+            }
+            system.addOwner(id, userName, levelStr, withdrawLimit);
+        }
+        else if (cmd == "FREEZE") {
+            int id;
+            if (!(iss >> id)) return false;
+            system.freezeAccount(id);
+        }
+        else if (cmd == "UNFREEZE") {
+            int id;
+            if (!(iss >> id)) return false;
+            system.unfreezeAccount(id);
+        }
+        else if (cmd == "MODIFY_OWNER_LIMIT") {
+            int id; std::string userName; double newLimit;
+            if (!(iss >> id >> userName >> newLimit)) return false;
+            system.modifyOwnerLimit(id, userName, newLimit);
         }
         else if (cmd == "REMOVE_OWNER") {
             int id; std::string userName;
@@ -113,7 +131,10 @@ public:
         else if (cmd == "FIXED_DEPOSIT") {
             int id, accountPassword; double amount; int months;
             if (!(iss >> id >> amount >> months >> accountPassword)) return false;
-            system.fixedDeposit(id, amount, months, accountPassword);
+            std::string autoStr;
+            bool autoRenew = false;
+            if (iss >> autoStr && autoStr == "AUTO") autoRenew = true;
+            system.fixedDeposit(id, amount, months, accountPassword, autoRenew);
         }
         else if (cmd == "FIXED_WITHDRAW") {
             int id, accountPassword; double amount;
