@@ -18,10 +18,12 @@ void LogManager::showLog() const {
 
 void LogManager::printSuccess() const {
     m_lastResult = true;
+    if (!m_silent) std::cout << '1' << std::endl;
 }
 
 void LogManager::printFailure() const {
     m_lastResult = false;
+    if (!m_silent) std::cout << '0' << std::endl;
 }
 
 void LogManager::saveLog(const std::string &filename) const {

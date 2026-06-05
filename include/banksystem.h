@@ -47,7 +47,6 @@ public:
     void fixedDeposit(int id, double amount, int months, int accountPassword);
     void fixedWithdraw(int id, double amount, int accountPassword);
     void consume(int id, double amount, int accountPassword);
-    void cashAdvance(int id, double amount, int accountPassword);
 
     void showDate() const;
     void addDays(int days);

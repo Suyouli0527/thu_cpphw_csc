@@ -44,7 +44,7 @@ double AccountManager::calcFixedInterest(double principal, int months) {
 double AccountManager::calcEarlyWithdrawInterest(double principal, const Date &depositDate, const Date &withdrawDate) {
     int days = withdrawDate - depositDate;
     if (days <= 0) return 0;
-    return principal * savingRate * days / 365.0;
+    return principal * savingRate * days / withdrawDate.daysInYear();
 }
 
 AccountManager::AccountManager() : currentDate(1970, 1, 1) {}
@@ -258,9 +258,4 @@ bool AccountManager::consume(int id, double amount, int accountPassword) {
     return creditAcc->consume(currentDate, amount);
 }
 
-bool AccountManager::cashAdvance(int id, double amount, int accountPassword) {
-    Account* acc = findAccount(id);
-    if (!acc || acc->getType() != 'C') return false;
-    if (!acc->verifyAccountPassword(accountPassword)) return false;
-    return acc->withdraw(currentDate, amount);
-}
+

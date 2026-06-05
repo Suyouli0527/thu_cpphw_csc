@@ -210,11 +210,6 @@ void BankSystem::consume(int id, double amount, int accountPassword) {
     logResult(accountMgr.consume(id, amount, accountPassword));
 }
 
-void BankSystem::cashAdvance(int id, double amount, int accountPassword) {
-    if (!requireAccount(id)) return;
-    logResult(accountMgr.cashAdvance(id, amount, accountPassword));
-}
-
 void BankSystem::showDate() const {
     if (!requireAdmin()) return;
     accountMgr.showDate();
