@@ -2,29 +2,6 @@
 #include "tools.h"
 #include <iostream>
 
-const double AccountManager::savingRate = 0.0115;
-const double AccountManager::creditRate = 0.0225;
-const double AccountManager::debtRate = 0.0005;
-
-double AccountManager::calcDailyInterest(char type, double balance, const Date &date) {
-    double dailyRate;
-    switch (type) {
-        case 'S':
-            dailyRate = savingRate / date.daysInYear();
-            break;
-        case 'C':
-            if (balance >= 0) {
-                dailyRate = creditRate / date.daysInYear();
-            } else {
-                dailyRate = debtRate;
-            }
-            break;
-        default:
-            return 0;
-    }
-    return balance * dailyRate;
-}
-
 AccountManager::AccountManager() : currentDate(1970, 1, 1) {}
 
 AccountManager::~AccountManager() {

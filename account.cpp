@@ -1,5 +1,4 @@
 #include "account.h"
-#include "accountManager.h"
 
 Account::Account(int id, char type, const std::string &name, double balance, const Date &openDate)
     : id(id), name(name), type(type), balance(balance), openDate(openDate),
@@ -18,7 +17,7 @@ void Account::settleMonthlyInterest() {
 void Account::updateInterest(const Date &targetDate) {
     Date current = lastInterestDate;
     while (current - targetDate < 0) {
-        double daily = AccountManager::calcDailyInterest(type, balance, current);
+        double daily = InterestCalculator::calcDailyInterest(type, balance, current);
         interest += daily;
         current.addDays(1);
         if (current.getDay() == 1) {
