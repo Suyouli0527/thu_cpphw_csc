@@ -1,5 +1,6 @@
 #pragma once
 #include "banksystem.h"
+#include <iostream>
 #include <sstream>
 #include <string>
 
@@ -206,6 +207,42 @@ public:
             std::string filename;
             if (!(iss >> filename)) return false;
             system.resume(filename);
+        }
+        else if (cmd == "HELP") {
+            std::cout << "===== 银行管理系统 命令列表 =====" << std::endl;
+            std::cout << "开户 OPEN <id> <S|C> <名称> <金额> [还款日] <密码> <0|1>" << std::endl;
+            std::cout << "销户 CLOSE <id> <密码>" << std::endl;
+            std::cout << "查询 QUERY <id> <密码>" << std::endl;
+            std::cout << "全部查询 QUERYALL" << std::endl;
+            std::cout << "存款 DEPOSIT <id> <金额> <密码>" << std::endl;
+            std::cout << "取款 WITHDRAW <id> <金额> <密码>" << std::endl;
+            std::cout << "转账 TRANSFER <源id> <目标id> <金额> <密码>" << std::endl;
+            std::cout << "定期存款 FIXED_DEPOSIT <id> <金额> <期限> <密码> [AUTO]" << std::endl;
+            std::cout << "定期支取 FIXED_WITHDRAW <id> <金额> <密码>" << std::endl;
+            std::cout << "信用消费 CONSUME <id> <金额> <密码>" << std::endl;
+            std::cout << "日期显示 SHOW_DATE" << std::endl;
+            std::cout << "日期推进 ADD_DAY <天数>" << std::endl;
+            std::cout << "日期设置 SET_DATE <年> <月> <日>" << std::endl;
+            std::cout << "创建用户 CREATE_USER <用户名> <密码>" << std::endl;
+            std::cout << "删除用户 DELETE_USER <用户名>" << std::endl;
+            std::cout << "查询用户 QUERY_USER <用户名>" << std::endl;
+            std::cout << "用户列表 QUERY_USERLIST" << std::endl;
+            std::cout << "切换用户 SWITCH <用户名> <密码>" << std::endl;
+            std::cout << "当前用户 WHOAMI" << std::endl;
+            std::cout << "修改账户名 MODIFY NAME <id> <新名> <密码>" << std::endl;
+            std::cout << "修改信用额 MODIFY CREDIT <id> <新额度> <密码>" << std::endl;
+            std::cout << "修改共享 MODIFY SHARED <id> <ys|ns>" << std::endl;
+            std::cout << "添加共有人 ADD_OWNER <id> <用户名> <FULL|RESTRICTED> [限额]" << std::endl;
+            std::cout << "移除共有人 REMOVE_OWNER <id> <用户名>" << std::endl;
+            std::cout << "修改限额 MODIFY_OWNER_LIMIT <id> <用户名> <新限额>" << std::endl;
+            std::cout << "冻结账户 FREEZE <id>" << std::endl;
+            std::cout << "解冻账户 UNFREEZE <id>" << std::endl;
+            std::cout << "修改用户密码 MODIFY_USERPASSWORD <旧密码> <新密码>" << std::endl;
+            std::cout << "修改账户密码 MODIFY_ACCOUNTPASSWORD <id> <旧密码> <新密码>" << std::endl;
+            std::cout << "操作记录 LOG" << std::endl;
+            std::cout << "回滚 ROLLBACK <日志ID>" << std::endl;
+            std::cout << "保存 SAVE <文件名>" << std::endl;
+            std::cout << "恢复 RESUME <文件名>" << std::endl;
         }
         else return false;
 
