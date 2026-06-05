@@ -130,7 +130,6 @@ void BankSystem::modifyOwnerLimit(int id, const std::string &userName, double ne
     Account* acc = accountMgr.findAccount(id);
     if (!acc) { logMgr.printFailure(); return; }
     if (!acc->isShared()) { logMgr.printFailure(); return; }
-    // 当前用户必须是同级别共有人（FULL）或管理员
     OwnerLevel currentLevel = acc->getOwnerLevel(userMgr.getCurrentUserName());
     if (currentLevel != OwnerLevel::FULL && !userMgr.isAdmin()) {
         logMgr.printFailure();
@@ -145,7 +144,6 @@ void BankSystem::removeOwner(int id, const std::string &userName) {
     Account* acc = accountMgr.findAccount(id);
     if (!acc) { logMgr.printFailure(); return; }
     if (!acc->isShared()) { logMgr.printFailure(); return; }
-    // 检查当前用户是否有权限移除（FULL或admin）
     OwnerLevel currentLevel = acc->getOwnerLevel(userMgr.getCurrentUserName());
     if (currentLevel != OwnerLevel::FULL && !userMgr.isAdmin()) {
         logMgr.printFailure();
@@ -261,6 +259,13 @@ void BankSystem::fixedDeposit(int id, double amount, int months, int accountPass
 void BankSystem::fixedWithdraw(int id, double amount, int accountPassword) {
     if (!requireFullAccess(id)) return;
     logResult(accountMgr.fixedWithdraw(id, amount, accountPassword));
+}
+
+void BankSystem::setAutoRenew(int id, int index, bool autoRenew, int accountPassword) {
+    if (!requireAccount(id, accountPassword)) return;
+    Account* acc = accountMgr.findAccount(id);
+    if (!acc || acc->getType() != 'S') { logMgr.printFailure(); return; }
+    logResult(static_cast<SavingAccount*>(acc)->setAutoRenew(index, autoRenew));
 }
 
 void BankSystem::consume(int id, double amount, int accountPassword) {

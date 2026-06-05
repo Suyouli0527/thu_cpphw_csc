@@ -82,6 +82,7 @@ public:
 
     bool fixedDeposit(const Date &date, double amount, int months, bool autoRenew);
     bool fixedWithdraw(const Date &date, double amount);
+    bool setAutoRenew(int index, bool autoRenew);
     void updateFixedDeposits(const Date &date);
     std::vector<FixedDeposit>& getFixedDeposits() { return fixedDeposits; }
     const std::vector<FixedDeposit>& getFixedDeposits() const { return fixedDeposits; }
@@ -103,8 +104,8 @@ private:
 public:
     CreditAccount(int id, char type, const std::string &name, double creditAmount, int repDay, const Date &openDate, int pwd, bool isShared);
     bool deposit(const Date &date, double amount) override;
-    bool withdraw(const Date &date, double amount) override;  // 透支取现
-    bool consume(const Date &date, double amount);            // 透支消费
+    bool withdraw(const Date &date, double amount) override;
+    bool consume(const Date &date, double amount);
     void updateCreditInterest(const Date &targetDate);
     double getCredit() const { return credit; }
     int getRepaymentDay() const { return repaymentDay; }

@@ -9,8 +9,7 @@ int main() {
         if (line.empty()) continue;
         std::string ignored;
         if (!Command::execute(bank, line, ignored)) {
-            // 命令解析失败
-        }
+}
     }
     return 0;
 }

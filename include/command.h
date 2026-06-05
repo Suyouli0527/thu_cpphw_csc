@@ -15,8 +15,6 @@ private:
     }
 
 public:
-    // 静态命令解析与执行
-    // 成功时 outAction 接收命令词，返回 true；解析失败返回 false
     static bool execute(BankSystem &system, const std::string &command, std::string &outAction) {
         system.setRawCommand(command);
         system.resetResult();
@@ -141,6 +139,15 @@ public:
             int id, accountPassword; double amount;
             if (!(iss >> id >> amount >> accountPassword)) return false;
             system.fixedWithdraw(id, amount, accountPassword);
+        }
+        else if (cmd == "SET_AUTORENEW") {
+            int id, index, accountPassword; std::string onOff;
+            if (!(iss >> id >> index >> onOff >> accountPassword)) return false;
+            bool autoRenew;
+            if (onOff == "ON") autoRenew = true;
+            else if (onOff == "OFF") autoRenew = false;
+            else return false;
+            system.setAutoRenew(id, index, autoRenew, accountPassword);
         }
         else if (cmd == "SHOW_DATE") {
             system.showDate();

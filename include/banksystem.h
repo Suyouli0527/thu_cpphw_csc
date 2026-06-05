@@ -50,6 +50,7 @@ public:
     void transfer(int srcId, int dstId, double amount, int srcAccountPassword);
     void fixedDeposit(int id, double amount, int months, int accountPassword, bool autoRenew);
     void fixedWithdraw(int id, double amount, int accountPassword);
+    void setAutoRenew(int id, int index, bool autoRenew, int accountPassword);
     void consume(int id, double amount, int accountPassword);
 
     void showDate() const;
